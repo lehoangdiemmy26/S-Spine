@@ -4,14 +4,16 @@ import numpy as np
 from PIL import Image
 import math
 
-# Cấu hình tên tab và logo đầu trang
+# Cấu hình tên tab và logo icon trên trình duyệt
 st.set_page_config(
     page_title="S-Spine | Tầm soát góc nghiêng",
+    page_icon="gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png",
     layout="wide"
 )
 
 # Hiển thị logo tròn ngay đầu trang web S-Spine
 st.image("gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png", width=160)
+
 # Giao diện Tông Trắng Sáng Y Tế (Clean Light Medical Theme)
 st.markdown("""
     <style>
@@ -150,7 +152,7 @@ if file1 and not file2:
     res_img, angle1, dir1 = process_and_analyze(img1)
     
     if res_img is not None:
-        st.image(res_img, caption="S-Spine quét đường mỏm vai tự nhiên", width=400)
+        st.image(res_img, caption="S-Spine quét đường mỏm vai tự nhiên", use_container_width=True)
         st.header("📊 PHÂN TÍCH TƯ THẾ TỰ NHIÊN (ẢNH TĨNH)")
         
         m1, m2 = st.columns(2)
@@ -173,7 +175,7 @@ elif file2 and not file1:
     res_img, angle2, dir2 = process_and_analyze(img2)
     
     if res_img is not None:
-        st.image(res_img, caption="S-Spine quét đường mỏm vai khi mang tải", width=400)
+        st.image(res_img, caption="S-Spine quét đường mỏm vai khi mang tải", use_container_width=True)
         st.header("📊 PHÂN TÍCH TƯ THẾ MANG TẢI (ẢNH ĐEO CẶP)")
         
         adjust_cm = angle2 * 0.85
@@ -199,7 +201,7 @@ elif file1 and file2:
     res2, angle2, dir2 = process_and_analyze(img2)
     
     if res1 is not None and res2 is not None:
-        st.image([res1, res2], caption=["Ảnh 1: Đứng tĩnh", "Ảnh 2: Đeo cặp"], width=400)
+        st.image([res1, res2], caption=["Ảnh 1: Đứng tĩnh", "Ảnh 2: Đeo cặp"], use_container_width=True)
         st.header("📊 KẾT QUẢ SO SÁNH BIẾN DẠNG ĐỘNG (Δα)")
         
         delta_alpha = abs(angle2 - angle1)
