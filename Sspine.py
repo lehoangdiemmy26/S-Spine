@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # Hiển thị logo tròn ngay đầu trang web S-Spine
-st.image("logo.png", width=160)
+st.image("https://raw.githubusercontent.com/lehoangdiemmy26/S-Spine/main/logo.png", width=160)
 
 # Giao diện Tông Trắng Sáng Y Tế (Clean Light Medical Theme)
 st.markdown("""
