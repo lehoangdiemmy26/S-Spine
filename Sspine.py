@@ -4,12 +4,14 @@ import numpy as np
 from PIL import Image
 import math
 
-# Cấu hình trang S-Spine
+# Cấu hình tên tab và logo đầu trang
 st.set_page_config(
-    page_title="S-Spine - Tầm Soát Cột Sống", 
-    page_icon="🩺", 
+    page_title="S-Spine | Tầm soát góc nghiêng",
     layout="wide"
 )
+
+# Hiển thị logo tròn ngay đầu trang web S-Spine
+st.image("logo.png", width=160)
 
 # Giao diện Tông Trắng Sáng Y Tế (Clean Light Medical Theme)
 st.markdown("""
