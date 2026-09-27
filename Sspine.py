@@ -1,13 +1,12 @@
 import streamlit as st
 import cv2
 import numpy as np
-import mediapipe as mp
 import math
 from PIL import Image
 
-# Khai báo giải pháp MediaPipe Pose
-mp_pose = mp.solutions.pose
-mp_drawing = mp.solutions.drawing_utils
+# Import trực tiếp sub-module solutions để tránh lỗi AttributeError của MediaPipe mới
+import mediapipe.python.solutions.pose as mp_pose
+import mediapipe.python.solutions.drawing_utils as mp_drawing
 
 # Cấu hình trang
 st.set_page_config(
@@ -16,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Logo (Nếu lỗi không tìm thấy ảnh logo thì comment dòng này lại bằng #)
+# Logo (Nếu lỗi không tìm thấy ảnh logo thì tự động bỏ qua)
 try:
     st.image("gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png", width=160)
 except Exception:
@@ -56,7 +55,7 @@ st.markdown("""
 st.markdown('<h1 class="main-title">🩺 S-Spine</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Ứng dụng AI Tầm Soát Biến Dạng Cột Sống Học Đường | Lượng giác & Vector (Toán 10-11)</p>', unsafe_allow_html=True)
 
-# Khởi tạo & Cache MediaPipe Pose để tiết kiệm RAM/CPU trên Streamlit
+# Khởi tạo & Cache MediaPipe Pose để tiết kiệm tài nguyên
 @st.cache_resource
 def get_mp_pose():
     return mp_pose.Pose(
@@ -127,7 +126,7 @@ def process_and_analyze(image_pil):
     return annotated_img, angle_deg, direction, is_angle_valid
 
 # =========================================================
-# HÀM MÔ TẢ VÀ HIỂN THỊ BÀI TẬP VẬT LÝ TRỊ LIỆU KÈM MINH HỌA
+# HÀM MÔ TẢ VÀ HIỂN THỊ BÀI TẬP VẬT LÝ TRỊ LIỆU
 # =========================================================
 def show_exercise_recommendations(status_type, angle_val):
     st.markdown("---")
