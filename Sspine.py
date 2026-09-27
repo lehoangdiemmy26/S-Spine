@@ -3,13 +3,7 @@ import cv2
 import numpy as np
 import math
 from PIL import Image
-import urllib.request
-import os
-
-# Import MediaPipe Tasks API chuẩn mới nhất
 import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
 
 # Cấu hình trang
 st.set_page_config(
@@ -58,20 +52,8 @@ st.markdown("""
 st.markdown('<h1 class="main-title">🩺 S-Spine</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Ứng dụng AI Tầm Soát Biến Dạng Cột Sống Học Đường | Lượng giác & Vector (Toán 10-11)</p>', unsafe_allow_html=True)
 
-# Tải file model Pose Landmarker tự động nếu chưa có
-MODEL_PATH = "pose_landmarker.task"
-@st.cache_resource
-def load_pose_detector():
-    if not os.path.exists(MODEL_PATH):
-        url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
-        urllib.request.urlretrieve(url, MODEL_PATH)
-    
-    base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
-    options = vision.PoseLandmarkerOptions(
-        base_options=base_options,
-        output_segmentation_masks=False
-    )
-    return vision.PoseLandmarker.create_from_options(options)
+# Khởi tạo MediaPipe Pose Legacy API
+mp_pose = mp.solutions.pose
 
 # =========================================================
 # HÀM XỬ LÝ VÀ NHẬN DIỆN MỎM VAI
@@ -88,55 +70,52 @@ def process_and_analyze(image_pil):
     img_np = np.array(image_pil.convert('RGB'))
     h, w, _ = img_np.shape
     
-    # Chuyển đổi sang MediaPipe Image
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_np)
-    
-    detector = load_pose_detector()
-    detection_result = detector.detect(mp_image)
-    
-    if not detection_result.pose_landmarks or len(detection_result.pose_landmarks) == 0:
-        return None, 0.0, "Không nhận diện được", False
+    with mp_pose.Pose(static_image_mode=True, model_complexity=1, min_detection_confidence=0.5) as pose:
+        results = pose.process(img_np)
         
-    landmarks = detection_result.pose_landmarks[0]
-    
-    # Index 11: LEFT_SHOULDER, Index 12: RIGHT_SHOULDER
-    left_shoulder = landmarks[11]
-    right_shoulder = landmarks[12]
-    
-    # Kiểm tra góc chụp chuẩn
-    shoulder_depth_diff = abs(left_shoulder.z - right_shoulder.z)
-    is_angle_valid = shoulder_depth_diff < 0.35  
-    
-    p1 = (int(left_shoulder.x * w), int(left_shoulder.y * h))   # Vai Trái
-    p2 = (int(right_shoulder.x * w), int(right_shoulder.y * h)) # Vai Phải
+        if not results.pose_landmarks:
+            return None, 0.0, "Không nhận diện được", False
+            
+        landmarks = results.pose_landmarks.landmark
+        
+        # Index 11: LEFT_SHOULDER, Index 12: RIGHT_SHOULDER
+        left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
+        right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+        
+        # Kiểm tra góc chụp chuẩn
+        shoulder_depth_diff = abs(left_shoulder.z - right_shoulder.z)
+        is_angle_valid = shoulder_depth_diff < 0.35  
+        
+        p1 = (int(left_shoulder.x * w), int(left_shoulder.y * h))   # Vai Trái
+        p2 = (int(right_shoulder.x * w), int(right_shoulder.y * h)) # Vai Phải
 
-    annotated_img = img_np.copy()
-    cv2.line(annotated_img, p1, p2, (0, 255, 0), 3)
-    cv2.circle(annotated_img, p1, 6, (255, 0, 0), -1)
-    cv2.circle(annotated_img, p2, 6, (255, 0, 0), -1)
-    
-    x1, y1 = p1
-    x2, y2 = p2
-    v = (x2 - x1, y2 - y1)
-    u = (1, 0)
-    
-    dot_product = u[0] * v[0] + u[1] * v[1]
-    magnitude_v = math.sqrt(v[0]**2 + v[1]**2)
-    
-    if magnitude_v == 0:
-        return annotated_img, 0.0, "Cân bằng", is_angle_valid
+        annotated_img = img_np.copy()
+        cv2.line(annotated_img, p1, p2, (0, 255, 0), 3)
+        cv2.circle(annotated_img, p1, 6, (255, 0, 0), -1)
+        cv2.circle(annotated_img, p2, 6, (255, 0, 0), -1)
         
-    cos_angle = max(0.0, min(1.0, abs(dot_product) / magnitude_v))
-    angle_deg = math.degrees(math.acos(cos_angle))
-    
-    if abs(y1 - y2) < 3:
-        direction = "Cân bằng"
-    elif y1 > y2:
-        direction = "Xệ VAI TRÁI"
-    else:
-        direction = "Xệ VAI PHẢI"
+        x1, y1 = p1
+        x2, y2 = p2
+        v = (x2 - x1, y2 - y1)
+        u = (1, 0)
         
-    return annotated_img, angle_deg, direction, is_angle_valid
+        dot_product = u[0] * v[0] + u[1] * v[1]
+        magnitude_v = math.sqrt(v[0]**2 + v[1]**2)
+        
+        if magnitude_v == 0:
+            return annotated_img, 0.0, "Cân bằng", is_angle_valid
+            
+        cos_angle = max(0.0, min(1.0, abs(dot_product) / magnitude_v))
+        angle_deg = math.degrees(math.acos(cos_angle))
+        
+        if abs(y1 - y2) < 3:
+            direction = "Cân bằng"
+        elif y1 > y2:
+            direction = "Xệ VAI TRÁI"
+        else:
+            direction = "Xệ VAI PHẢI"
+            
+        return annotated_img, angle_deg, direction, is_angle_valid
 
 # =========================================================
 # HÀM MÔ TẢ VÀ HIỂN THỊ BÀI TẬP VẬT LÝ TRỊ LIỆU
