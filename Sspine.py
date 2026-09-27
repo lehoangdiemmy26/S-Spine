@@ -3,16 +3,13 @@ import cv2
 import numpy as np
 import math
 from PIL import Image
+import urllib.request
+import os
 
-# Import mediapipe và xử lý triệt để lỗi import solutions
+# Import MediaPipe Tasks API chuẩn mới nhất
 import mediapipe as mp
-
-try:
-    import mediapipe.python.solutions.pose as mp_pose
-    import mediapipe.python.solutions.drawing_utils as mp_drawing
-except (ImportError, AttributeError):
-    mp_pose = mp.solutions.pose
-    mp_drawing = mp.solutions.drawing_utils
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
 # Cấu hình trang
 st.set_page_config(
@@ -21,7 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Logo (Bắt ngoại lệ nếu chưa có file logo trên repo)
+# Logo (Nếu có)
 try:
     st.image("gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png", width=160)
 except Exception:
@@ -61,14 +58,20 @@ st.markdown("""
 st.markdown('<h1 class="main-title">🩺 S-Spine</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Ứng dụng AI Tầm Soát Biến Dạng Cột Sống Học Đường | Lượng giác & Vector (Toán 10-11)</p>', unsafe_allow_html=True)
 
-# Khởi tạo & Cache MediaPipe Pose để tiết kiệm tài nguyên hệ thống
+# Tải file model Pose Landmarker tự động nếu chưa có
+MODEL_PATH = "pose_landmarker.task"
 @st.cache_resource
-def get_mp_pose():
-    return mp_pose.Pose(
-        static_image_mode=True, 
-        model_complexity=1,
-        min_detection_confidence=0.5
+def load_pose_detector():
+    if not os.path.exists(MODEL_PATH):
+        url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
+        urllib.request.urlretrieve(url, MODEL_PATH)
+    
+    base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
+    options = vision.PoseLandmarkerOptions(
+        base_options=base_options,
+        output_segmentation_masks=False
     )
+    return vision.PoseLandmarker.create_from_options(options)
 
 # =========================================================
 # HÀM XỬ LÝ VÀ NHẬN DIỆN MỎM VAI
@@ -85,18 +88,22 @@ def process_and_analyze(image_pil):
     img_np = np.array(image_pil.convert('RGB'))
     h, w, _ = img_np.shape
     
-    pose = get_mp_pose()
-    results = pose.process(img_np)
+    # Chuyển đổi sang MediaPipe Image
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_np)
     
-    if not results.pose_landmarks:
+    detector = load_pose_detector()
+    detection_result = detector.detect(mp_image)
+    
+    if not detection_result.pose_landmarks or len(detection_result.pose_landmarks) == 0:
         return None, 0.0, "Không nhận diện được", False
         
-    landmarks = results.pose_landmarks.landmark
+    landmarks = detection_result.pose_landmarks[0]
     
-    left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
-    right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+    # Index 11: LEFT_SHOULDER, Index 12: RIGHT_SHOULDER
+    left_shoulder = landmarks[11]
+    right_shoulder = landmarks[12]
     
-    # Kiểm tra góc chụp chuẩn (độ lệch trục Z giữa 2 vai)
+    # Kiểm tra góc chụp chuẩn
     shoulder_depth_diff = abs(left_shoulder.z - right_shoulder.z)
     is_angle_valid = shoulder_depth_diff < 0.35  
     
