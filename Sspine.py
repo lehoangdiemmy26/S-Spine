@@ -47,7 +47,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title"> "gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png" S-Spine</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">  S-Spine</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Ứng dụng AI Tầm Soát Biến Dạng Cột Sống Học Đường | Lượng giác & Vector (Toán 10-11)</p>', unsafe_allow_html=True)
 
 # Khởi tạo MediaPipe Pose
