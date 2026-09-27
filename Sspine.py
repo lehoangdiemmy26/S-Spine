@@ -3,10 +3,15 @@ import cv2
 import numpy as np
 import math
 from PIL import Image
+import mediapipe as mp
 
-# Import trực tiếp sub-module solutions để tránh lỗi AttributeError của MediaPipe mới
-import mediapipe.python.solutions.pose as mp_pose
-import mediapipe.python.solutions.drawing_utils as mp_drawing
+# Tự động chọn đường dẫn import đúng theo phiên bản MediaPipe trên server
+try:
+    import mediapipe.python.solutions.pose as mp_pose
+    import mediapipe.python.solutions.drawing_utils as mp_drawing
+except ImportError:
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
 
 # Cấu hình trang
 st.set_page_config(
