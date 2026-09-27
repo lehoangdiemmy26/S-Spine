@@ -11,7 +11,11 @@ st.set_page_config(
     page_icon="🩺",
     layout="wide"
 )
-
+# Logo trường hoặc biểu tượng ứng dụng
+try:
+    st.image("gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png", width=140)
+except Exception:
+    pass
 # Giao diện Custom CSS
 st.markdown("""
     <style>
