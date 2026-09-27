@@ -3,13 +3,14 @@ import cv2
 import numpy as np
 import math
 from PIL import Image
+
+# Import mediapipe và xử lý triệt để lỗi import solutions
 import mediapipe as mp
 
-# Tự động chọn đường dẫn import đúng theo phiên bản MediaPipe trên server
 try:
     import mediapipe.python.solutions.pose as mp_pose
     import mediapipe.python.solutions.drawing_utils as mp_drawing
-except ImportError:
+except (ImportError, AttributeError):
     mp_pose = mp.solutions.pose
     mp_drawing = mp.solutions.drawing_utils
 
@@ -20,13 +21,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# Logo (Nếu lỗi không tìm thấy ảnh logo thì tự động bỏ qua)
+# Logo (Bắt ngoại lệ nếu chưa có file logo trên repo)
 try:
     st.image("gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png", width=160)
 except Exception:
     pass
 
-# Giao diện Theme Y tế & Bài tập
+# Giao diện Theme Y tế & CSS Custom
 st.markdown("""
     <style>
     .stApp { background-color: #FFFFFF; color: #1A202C; }
@@ -60,7 +61,7 @@ st.markdown("""
 st.markdown('<h1 class="main-title">🩺 S-Spine</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Ứng dụng AI Tầm Soát Biến Dạng Cột Sống Học Đường | Lượng giác & Vector (Toán 10-11)</p>', unsafe_allow_html=True)
 
-# Khởi tạo & Cache MediaPipe Pose để tiết kiệm tài nguyên
+# Khởi tạo & Cache MediaPipe Pose để tiết kiệm tài nguyên hệ thống
 @st.cache_resource
 def get_mp_pose():
     return mp_pose.Pose(
@@ -95,7 +96,7 @@ def process_and_analyze(image_pil):
     left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
     right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
     
-    # Kiểm tra góc chụp chuẩn
+    # Kiểm tra góc chụp chuẩn (độ lệch trục Z giữa 2 vai)
     shoulder_depth_diff = abs(left_shoulder.z - right_shoulder.z)
     is_angle_valid = shoulder_depth_diff < 0.35  
     
