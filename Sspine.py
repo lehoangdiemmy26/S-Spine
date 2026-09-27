@@ -238,7 +238,7 @@ with tab_guide:
             <h4>📸 3. Góc Máy Camera</h4>
             <ul>
                 <li>Đặt điện thoại <b>ngang tầm ngực</b> (khoảng cách 1.5m - 2m).</li>
-                <li>Camera đặt song song cơ thể, tránh nghiêng góc máy lên/ลง.</li>
+                <li>Camera đặt song song cơ thể, tránh nghiêng góc máy lên/xuống.</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
