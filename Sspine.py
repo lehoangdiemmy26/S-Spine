@@ -1,10 +1,11 @@
 import streamlit as st
 import cv2
 import numpy as np
-from PIL import Image
-import math
 import mediapipe as mp
 
+# Đảm bảo khai báo mp_pose chuẩn như thế này:
+mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils
 # Cấu hình trang
 st.set_page_config(
     page_title="S-Spine | Tầm soát góc nghiêng",
