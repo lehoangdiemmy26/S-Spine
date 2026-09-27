@@ -2,10 +2,13 @@ import streamlit as st
 import cv2
 import numpy as np
 import mediapipe as mp
+import math
+from PIL import Image
 
-# Đảm bảo khai báo mp_pose chuẩn như thế này:
+# Khai báo giải pháp MediaPipe Pose
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
+
 # Cấu hình trang
 st.set_page_config(
     page_title="S-Spine | Tầm soát góc nghiêng",
@@ -13,8 +16,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Logo
-st.image("gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png", width=160)
+# Logo (Nếu lỗi không tìm thấy ảnh logo thì comment dòng này lại bằng #)
+try:
+    st.image("gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png", width=160)
+except Exception:
+    pass
 
 # Giao diện Theme Y tế & Bài tập
 st.markdown("""
@@ -53,13 +59,11 @@ st.markdown('<p class="sub-title">Ứng dụng AI Tầm Soát Biến Dạng Cộ
 # Khởi tạo & Cache MediaPipe Pose để tiết kiệm RAM/CPU trên Streamlit
 @st.cache_resource
 def get_mp_pose():
-    return mp.solutions.pose.Pose(
+    return mp_pose.Pose(
         static_image_mode=True, 
         model_complexity=1,
         min_detection_confidence=0.5
     )
-
-mp_pose = mp.solutions.pose
 
 # =========================================================
 # HÀM XỬ LÝ VÀ NHẬN DIỆN MỎM VAI
