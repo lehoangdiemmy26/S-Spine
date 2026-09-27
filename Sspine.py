@@ -8,7 +8,7 @@ import mediapipe as mp
 # Cấu hình trang Streamlit
 st.set_page_config(
     page_title="S-Spine | Tầm soát lệch vai & cột sống",
-    page_icon="🩺",
+    page_icon="gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png",
     layout="wide"
 )
 # Logo trường hoặc biểu tượng ứng dụng
