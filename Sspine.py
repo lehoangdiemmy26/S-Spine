@@ -6,11 +6,25 @@ from PIL import Image
 import mediapipe as mp
 
 # =========================================================
+# CẤU HÌNH LOGO TỰ ĐỘNG NHẬN DIỆN .PNG / .JPG
+# =========================================================
+logo_img = "🛡️" # Fallback mặc định nếu không tìm thấy file
+for filename in [
+    "gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png",
+    "gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.jpg"
+]:
+    try:
+        logo_img = Image.open(filename)
+        break
+    except Exception:
+        continue
+
+# =========================================================
 # CẤU HÌNH TRANG & GIAO DIỆN CHÍNH (CSS)
 # =========================================================
 st.set_page_config(
     page_title="S-Spine | Tầm Soát Lệch Vai & Cột Sống Học Đường",
-    page_icon="🦴",
+    page_icon=logo_img if isinstance(logo_img, Image.Image) else "🛡️",
     layout="wide"
 )
 
@@ -55,7 +69,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">🦴 S-Spine</h1>', unsafe_allow_html=True)
+# Hiển thị tiêu đề kèm logo ở góc trái nếu load thành công
+col_logo, col_title = st.columns([0.08, 0.92])
+with col_logo:
+    if isinstance(logo_img, Image.Image):
+        st.image(logo_img, width=65)
+    else:
+        st.markdown("<h1>🛡️</h1>", unsafe_allow_html=True)
+with col_title:
+    st.markdown('<h1 class="main-title" style="margin-top: 5px;">S-Spine</h1>', unsafe_allow_html=True)
+
 st.markdown('<p class="sub-title">Ứng dụng AI Hỗ Trợ Tầm Soát Biến Dạng Cột Sống & Tư Thế Học Đường</p>', unsafe_allow_html=True)
 
 mp_pose = mp.solutions.pose
@@ -280,7 +303,7 @@ def show_exercise_recommendations(status_type):
                 <div class="exercise-title">1. Tư thế Con Mèo - Con Bò</div>
                 <p><b>Tác dụng:</b> Tăng độ linh hoạt cột sống ngực, giảm gù.</p>
                 <p><b>Cách tập:</b> Quỳ 4 điểm. Hít võng lưng ngẩng đầu, thở cong lưng hóp bụng.</p>
-                <p>⏱️ <b>Liều lượng:</b> 10 - 12 lần/ngày.</p>
+                <p>⏱️️ <b>Liều lượng:</b> 10 - 12 lần/ngày.</p>
             </div>
             """, unsafe_allow_html=True)
         with ex2:
@@ -336,7 +359,7 @@ with tab_guide:
         """, unsafe_allow_html=True)
 
 with tab_app:
-    st.sidebar.header("⚙️ Cấu hình Tầm Soát")
+    st.sidebar.header("⚙️️ Cấu hình Tầm Soát")
     bag_weight = st.sidebar.number_input("Trọng lượng cặp sách (kg):", min_value=0.0, value=4.5, step=0.5)
 
     analysis_mode = st.radio(
@@ -463,7 +486,7 @@ with tab_app:
                     st.error(f"🚨 Cặp sách {bag_weight}kg quá nặng gây ảnh hưởng **Nặng** đến cột sống! Cần giảm bớt trọng lượng balo ngay.")
                     show_exercise_recommendations("warning")
             else:
-                st.error("⚠️️ Một trong hai bức ảnh không nhận diện rõ khung người.")
+                st.error("⚠ Một trong hai bức ảnh không nhận diện rõ khung người.")
 
     elif analysis_mode == "4. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Từ sau lưng)":
         st.subheader("4. Tầm Soát Tư Thế Ngồi Học & Lệch Trục Lưng")
