@@ -588,8 +588,8 @@ with tab_app:
     # MỤC 4: SO SÁNH TRƯỚC & SAU KHI ĐEO CẶP (TÍNH NĂNG MỚI)
     # =========================================================
     elif analysis_mode == "4. So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)":
-        st.subheader("4. Đối Chiếu Tư Thế: Trước và Sau Khi Đeo Cặp Sách")
-        st.info("💡 Tính năng này giúp so sánh trực tiếp sự thay đổi của cơ thể khi mang balo so với lúc đứng thẳng bình thường. Hãy chọn góc chụp và tải lên 2 bức ảnh tương ứng.")
+        st.subheader("4. Đối Chiếu Tư Thế:Trước và sau khi đeo ")
+        st.info("Tính năng này giúp so sánh trực tiếp sự thay đổi của cơ thể khi mang cặp sách so với lúc đứng thẳng bình thường. Hãy chọn góc chụp và tải lên 2 bức ảnh tương ứng.")
 
         comp_sub_mode = st.selectbox(
             "Chọn góc chụp so sánh:",
@@ -598,9 +598,9 @@ with tab_app:
 
         col_b1, col_b2 = st.columns(2)
         with col_b1:
-            file_normal = st.file_uploader("1. Ảnh KHÔNG đeo cặp (Trạng thái gốc)", type=['jpg', 'png', 'jpeg'], key="u_comp_norm")
+            file_normal = st.file_uploader("1. Ảnh không đeo cặp (trạng thái gốc)", type=['jpg', 'png', 'jpeg'], key="u_comp_norm")
         with col_b2:
-            file_backpack = st.file_uploader("2. Ảnh KHI ĐEO CẶP SÁCH", type=['jpg', 'png', 'jpeg'], key="u_comp_pack")
+            file_backpack = st.file_uploader("2. Ảnh khi đeo cặp ", type=['jpg', 'png', 'jpeg'], key="u_comp_pack")
 
         if file_normal and file_backpack:
             img_norm = Image.open(file_normal)
@@ -684,6 +684,6 @@ with tab_app:
 # Miễn trừ trách nhiệm y tế footer
 st.markdown("""
 <div class="disclaimer-box">
-    <b>⚠️ MIỄN TRỪ TRÁCH NHIỆM Y TẾ:</b> Kết quả phân tích từ hệ thống S-Spine chỉ mang tính chất tầm soát, tham khảo và hỗ trợ giáo dục sức khỏe học đường, <b>không có giá trị thay thế chẩn đoán y khoa chính thức</b> từ bác sĩ chuyên khoa hoặc chuyên gia vật lý trị liệu.
+    <b> MIỄN TRỪ TRÁCH NHIỆM Y TẾ:</b> Kết quả phân tích từ hệ thống S-Spine chỉ mang tính chất tầm soát, tham khảo và hỗ trợ giáo dục sức khỏe học đường, <b>không có giá trị thay thế chẩn đoán y khoa chính thức</b> từ bác sĩ chuyên khoa hoặc chuyên gia vật lý trị liệu.
 </div>
 """, unsafe_allow_html=True)
