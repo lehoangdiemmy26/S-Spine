@@ -588,7 +588,7 @@ with tab_app:
     # MỤC 4: SO SÁNH TRƯỚC & SAU KHI ĐEO CẶP (TÍNH NĂNG MỚI)
     # =========================================================
     elif analysis_mode == "4. So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)":
-        st.subheader("4. Đối Chiếu Tư Thế: Trước vs. Sau Khi Đeo Cặp Sách")
+        st.subheader("4. Đối Chiếu Tư Thế: Trước và Sau Khi Đeo Cặp Sách")
         st.info("💡 Tính năng này giúp so sánh trực tiếp sự thay đổi của cơ thể khi mang balo so với lúc đứng thẳng bình thường. Hãy chọn góc chụp và tải lên 2 bức ảnh tương ứng.")
 
         comp_sub_mode = st.selectbox(
@@ -598,9 +598,9 @@ with tab_app:
 
         col_b1, col_b2 = st.columns(2)
         with col_b1:
-            file_normal = st.file_uploader("1️⃣ Ảnh KHÔNG đeo cặp (Trạng thái gốc)", type=['jpg', 'png', 'jpeg'], key="u_comp_norm")
+            file_normal = st.file_uploader("1. Ảnh KHÔNG đeo cặp (Trạng thái gốc)", type=['jpg', 'png', 'jpeg'], key="u_comp_norm")
         with col_b2:
-            file_backpack = st.file_uploader("2️⃣ Ảnh KHI ĐEO CẶP SÁCH", type=['jpg', 'png', 'jpeg'], key="u_comp_pack")
+            file_backpack = st.file_uploader("2. Ảnh KHI ĐEO CẶP SÁCH", type=['jpg', 'png', 'jpeg'], key="u_comp_pack")
 
         if file_normal and file_backpack:
             img_norm = Image.open(file_normal)
