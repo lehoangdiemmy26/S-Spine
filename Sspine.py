@@ -113,7 +113,7 @@ def process_standing_front(image_pil):
             return None, 0.0, "Các mốc cơ thể bị khuất", False, ""
 
         is_back_view = nose.z > ((left_shoulder.z + right_shoulder.z) / 2.0) or nose.visibility < 0.5
-        view_text = "Góc nhìn: Sau lưng" if is_back_view else "Góc nhìn: Đối diện"
+        view_text = "Góc nhìn: Sau lưng" if is_back_view else "Góc nhìn: Chính diện"
         
         p_left = (int(left_shoulder.x * w), int(left_shoulder.y * h))
         p_right = (int(right_shoulder.x * w), int(right_shoulder.y * h))
@@ -295,7 +295,7 @@ def show_exercise_recommendations(status_type):
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.warning("⚠️ Phát hiện chỉ số lệch hoặc gù lưng. Dưới đây là 3 bài tập vật lý trị liệu giúp cải thiện cột sống:")
+        st.warning("⚠️ Phát hiện chỉ số lệch hoặc gù lưng. Dưới đây là các bài tập vật lý trị liệu giúp cải thiện cột sống:")
         ex1, ex2, ex3 = st.columns(3)
         with ex1:
             st.markdown("""
@@ -303,7 +303,7 @@ def show_exercise_recommendations(status_type):
                 <div class="exercise-title">1. Tư thế Con Mèo - Con Bò</div>
                 <p><b>Tác dụng:</b> Tăng độ linh hoạt cột sống ngực, giảm gù.</p>
                 <p><b>Cách tập:</b> Quỳ 4 điểm. Hít võng lưng ngẩng đầu, thở cong lưng hóp bụng.</p>
-                <p>⏱️ <b>Liều lượng:</b> 10 - 12 lần/ngày.</p>
+                <p>⏱ <b>Liều lượng:</b> 10 - 12 lần/ngày.</p>
             </div>
             """, unsafe_allow_html=True)
         with ex2:
@@ -363,93 +363,103 @@ with tab_app:
     bag_weight = st.sidebar.number_input("Trọng lượng cặp sách (kg):", min_value=0.0, value=4.5, step=0.5)
 
     analysis_mode = st.radio(
-        "Chọn chế độ phân tích tư thế:",
+        "Chọn mục tầm soát tư thế:",
         [
-            "1. Đứng Tĩnh - Chính Diện (Kiểm tra lệch vai)", 
-            "2. Đứng Nghiêng - Bên Hông (Đo độ gù & cổ)", 
-            "3. Đeo Cặp Sách (Chính diện & Nghiêng)",
-            "4. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Từ sau lưng)"
+            "1. 🧍 Đứng Tĩnh (Đo lệch vai / độ gù)", 
+            "2. 🎒 Đeo Cặp Sách (Đánh giá tải trọng)",
+            "3. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)"
         ],
         horizontal=False
     )
 
     st.markdown("---")
 
-    if analysis_mode == "1. Đứng Tĩnh - Chính Diện (Kiểm tra lệch vai)":
-        st.subheader("1. Tầm Soát Tư Thế Đứng Tĩnh (Chính Diện/Sau Lưng)")
-        input_type = st.radio("Chọn phương thức đầu vào:", ["Tải ảnh lên", "Chụp bằng Camera"], key="t1")
-        file = st.file_uploader("Tải ảnh:", type=['jpg', 'png', 'jpeg'], key="u1") if input_type == "Tải ảnh lên" else st.camera_input("Chụp ảnh", key="c1")
+    # =========================================================
+    # MỤC 1: ĐỨNG TĨNH (TÙY CHỌN GÓC CHỤP)
+    # =========================================================
+    if analysis_mode == "1. 🧍 Đứng Tĩnh (Đo lệch vai / độ gù)":
+        st.subheader("1. Tầm Soát Tư Thế Đứng Tĩnh")
         
-        if file:
-            img = Image.open(file)
-            res_img, angle, direction, valid, vt = process_standing_front(img)
-            if valid and res_img is not None:
-                st.image(res_img, caption=f"AI phân tích ({vt})", use_container_width=True)
-                
-                if angle < 1.2:
-                    level_label = "🟢 Bình thường (Chuẩn)"
-                elif angle <= 3.0:
-                    level_label = "🟡 Mức độ Nhẹ"
-                else:
-                    level_label = "🔴 Mức độ Nặng (Cần chú ý)"
-
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Góc nghiêng vai chuẩn hóa", f"{angle:.2f}°")
-                m2.metric("Trạng thái vai", direction)
-                m3.metric("Phân loại", level_label)
-                
-                if angle < 1.2:
-                    st.success("✅ Tư thế chuẩn xác!")
-                    show_exercise_recommendations("normal")
-                elif angle <= 3.0:
-                    st.warning(f"⚠ Dáng đứng bị **{direction}** ở mức **Nhẹ** (lệch {angle:.2f}°). Nên thực hiện các bài tập giãn cơ và chú ý dáng đi đứng.")
-                    show_exercise_recommendations("warning")
-                else:
-                    st.error(f"🚨 Phát hiện lệch vai rõ rệt ở mức **Nặng** ({direction} lệch {angle:.2f}°)! Cần điều chỉnh tư thế ngay.")
-                    show_exercise_recommendations("warning")
-            else:
-                st.error("⚠️ Không tìm thấy người trong ảnh hoặc mốc cơ thể bị khuất.")
-
-    elif analysis_mode == "2. Đứng Nghiêng - Bên Hông (Đo độ gù & cổ)":
-        st.subheader("2. Đo Độ Gù & Chu Đầu (Góc Chụp Nghiêng 90 Độ)")
-        st.info("💡 **Lưu ý:** Người chụp đứng ngang bên cạnh học sinh để lấy trọn góc nhìn từ Tai - Vai - Hông.")
-        input_type = st.radio("Chọn phương thức đầu vào:", ["Tải ảnh lên", "Chụp bằng Camera"], key="t2")
-        file = st.file_uploader("Tải ảnh nghiêng:", type=['jpg', 'png', 'jpeg'], key="u2") if input_type == "Tải ảnh lên" else st.camera_input("Chụp ảnh nghiêng", key="c2")
+        standing_sub_mode = st.selectbox(
+            "Chọn góc chụp:",
+            ["Chính diện / Sau lưng (Kiểm tra lệch vai)", "Nghiêng bên hông (Kiểm tra độ gù & chu đầu)"]
+        )
         
-        if file:
-            img = Image.open(file)
-            res_img, kyphosis, head_off, status_side, valid = process_standing_side(img)
-            if valid and res_img is not None:
-                st.image(res_img, caption="AI phân tích đường cong cột sống bên hông", use_container_width=True)
-                
-                if kyphosis < 4 and head_off < 10:
-                    level_label = "🟢 Bình thường"
-                elif kyphosis <= 8 and head_off <= 20:
-                    level_label = "🟡 Mức độ Nhẹ"
-                else:
-                    level_label = "🔴 Mức độ Nặng"
+        input_type = st.radio("Chọn phương thức đầu vào:", ["Tải ảnh lên", "Chụp bằng Camera"], key="t1_stand")
+        
+        if standing_sub_mode == "Chính diện / Sau lưng (Kiểm tra lệch vai)":
+            file = st.file_uploader("Tải ảnh chính diện/sau lưng:", type=['jpg', 'png', 'jpeg'], key="u1_front") if input_type == "Tải ảnh lên" else st.camera_input("Chụp ảnh", key="c1_front")
+            
+            if file:
+                img = Image.open(file)
+                res_img, angle, direction, valid, vt = process_standing_front(img)
+                if valid and res_img is not None:
+                    st.image(res_img, caption=f"AI phân tích ({vt})", use_container_width=True)
+                    
+                    if angle < 1.2:
+                        level_label = "🟢 Bình thường (Chuẩn)"
+                    elif angle <= 3.0:
+                        level_label = "🟡 Mức độ Nhẹ"
+                    else:
+                        level_label = "🔴 Mức độ Nặng (Cần chú ý)"
 
-                s1, s2, s3, s4 = st.columns(4)
-                s1.metric("Chỉ số gù lưng", f"{kyphosis:.1f}")
-                s2.metric("Độ chu đầu (FHP)", f"{head_off:.1f}")
-                s3.metric("Đánh giá", status_side)
-                s4.metric("Phân loại", level_label)
-                
-                if kyphosis < 4 and head_off < 10:
-                    st.success("✅ Đường cong cột sống sinh lý hoàn toàn bình thường!")
-                    show_exercise_recommendations("normal")
-                elif kyphosis <= 8 or head_off <= 20:
-                    st.warning("⚠️ Phát hiện xu hướng khom vai/cổ rướn trước ở mức **Nhẹ**. Hãy tích cực tập luyện mở ngực!")
-                    show_exercise_recommendations("warning")
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Góc nghiêng vai chuẩn hóa", f"{angle:.2f}°")
+                    m2.metric("Trạng thái vai", direction)
+                    m3.metric("Phân loại", level_label)
+                    
+                    if angle < 1.2:
+                        st.success("✅ Tư thế chuẩn xác!")
+                        show_exercise_recommendations("normal")
+                    elif angle <= 3.0:
+                        st.warning(f"⚠ Dáng đứng bị **{direction}** ở mức **Nhẹ** (lệch {angle:.2f}°). Nên thực hiện các bài tập giãn cơ và chú ý dáng đi đứng.")
+                        show_exercise_recommendations("warning")
+                    else:
+                        st.error(f"🚨 Phát hiện lệch vai rõ rệt ở mức **Nặng** ({direction} lệch {angle:.2f}°)! Cần điều chỉnh tư thế ngay.")
+                        show_exercise_recommendations("warning")
                 else:
-                    st.error("🚨 Phát hiện tình trạng gù lưng và chu đầu ở mức **Nặng**! Cần nghiêm túc thực hiện các bài tập vật lý trị liệu.")
-                    show_exercise_recommendations("warning")
-            else:
-                st.error("⚠️ Không nhận diện rõ các mốc cơ thể ở góc nghiêng này.")
+                    st.error("⚠️ Không tìm thấy người trong ảnh hoặc mốc cơ thể bị khuất.")
+        
+        else: # Góc nghiêng
+            file = st.file_uploader("Tải ảnh nghiêng bên hông:", type=['jpg', 'png', 'jpeg'], key="u1_side") if input_type == "Tải ảnh lên" else st.camera_input("Chụp ảnh nghiêng", key="c1_side")
+            
+            if file:
+                img = Image.open(file)
+                res_img, kyphosis, head_off, status_side, valid = process_standing_side(img)
+                if valid and res_img is not None:
+                    st.image(res_img, caption="AI phân tích đường cong cột sống bên hông", use_container_width=True)
+                    
+                    if kyphosis < 4 and head_off < 10:
+                        level_label = "🟢 Bình thường"
+                    elif kyphosis <= 8 and head_off <= 20:
+                        level_label = "🟡 Mức độ Nhẹ"
+                    else:
+                        level_label = "🔴 Mức độ Nặng"
 
-    elif analysis_mode == "3. Đeo Cặp Sách (Chính diện & Nghiêng)":
-        st.subheader("3. Tầm Soát Khi Đeo Cặp Sách (Đánh giá áp lực tải trọng)")
-        st.info("💡 Ở chế độ này, cậu có thể tải lên **cả 2 ảnh** (Ảnh mặt trước/sau để kiểm tra lệch vai và Ảnh nghiêng bên hông để kiểm tra độ gù khi mang balo) để hệ thống tổng hợp đánh giá nhé!")
+                    s1, s2, s3, s4 = st.columns(4)
+                    s1.metric("Chỉ số gù lưng", f"{kyphosis:.1f}")
+                    s2.metric("Độ chu đầu (FHP)", f"{head_off:.1f}")
+                    s3.metric("Đánh giá", status_side)
+                    s4.metric("Phân loại", level_label)
+                    
+                    if kyphosis < 4 and head_off < 10:
+                        st.success("✅ Đường cong cột sống sinh lý hoàn toàn bình thường!")
+                        show_exercise_recommendations("normal")
+                    elif kyphosis <= 8 or head_off <= 20:
+                        st.warning("⚠️ Phát hiện xu hướng khom vai/cổ rướn trước ở mức **Nhẹ**. Hãy tích cực tập luyện mở ngực!")
+                        show_exercise_recommendations("warning")
+                    else:
+                        st.error("🚨 Phát hiện tình trạng gù lưng và chu đầu ở mức **Nặng**! Cần nghiêm túc thực hiện các bài tập vật lý trị liệu.")
+                        show_exercise_recommendations("warning")
+                else:
+                    st.error("⚠️ Không nhận diện rõ các mốc cơ thể ở góc nghiêng này.")
+
+    # =========================================================
+    # MỤC 2: ĐEO CẶP SÁCH
+    # =========================================================
+    elif analysis_mode == "2. 🎒 Đeo Cặp Sách (Đánh giá tải trọng)":
+        st.subheader("2. Tầm Soát Khi Đeo Cặp Sách (Đánh giá áp lực tải trọng)")
+        st.info("💡 Tải lên **cả 2 ảnh** (Ảnh mặt trước/sau để kiểm tra lệch vai và Ảnh nghiêng bên hông để kiểm tra độ gù khi mang balo) để hệ thống tổng hợp đánh giá nhé!")
         
         c_front, c_side = st.columns(2)
         with c_front:
@@ -490,41 +500,89 @@ with tab_app:
             else:
                 st.error("⚠ Một trong hai bức ảnh không nhận diện rõ khung người.")
 
-    elif analysis_mode == "4. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Từ sau lưng)":
-        st.subheader("4. Tầm Soát Tư Thế Ngồi Học & Lệch Trục Lưng")
-        input_type = st.radio("Chọn phương thức đầu vào:", ["Tải ảnh lên", "Chụp bằng Camera"], key="t4")
-        file = st.file_uploader("Tải ảnh ngồi:", type=['jpg', 'png', 'jpeg'], key="u4") if input_type == "Tải ảnh lên" else st.camera_input("Chụp ảnh ngồi", key="c4")
-        
-        if file:
-            img = Image.open(file)
-            res_img, s_angle, hump, status_sit, valid = process_sitting_back(img)
-            if valid and res_img is not None:
-                st.image(res_img, caption="AI phân tích tư thế ngồi học", use_container_width=True)
+    # =========================================================
+    # MỤC 3: TƯ THẾ NGỒI HỌC & ĐO ĐỘ GÙ (KẾT HỢP LINH HOẠT 2 GÓC CHỤP)
+    # =========================================================
+    elif analysis_mode == "3. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)":
+        st.subheader("3. Tầm Soát Tư Thế Ngồi Học & Độ Gù (Kết hợp Đa Góc)")
+        st.info("💡 Ở chế độ này, cậu có thể linh hoạt tải lên **1 trong 2 góc chụp** hoặc **cả 2 góc chụp** (Sau lưng để kiểm tra lệch vai khi ngồi, Nghiêng bên hông để kiểm tra độ gù lưng và cúi đầu sát bàn). Hệ thống sẽ tự động phân tích ảnh nào được cung cấp!")
+
+        col_up1, col_up2 = st.columns(2)
+        with col_up1:
+            file_sit_back = st.file_uploader("🪑 Ảnh ngồi từ Sau lưng (Kiểm tra lệch vai)", type=['jpg', 'png', 'jpeg'], key="u_sit_back")
+        with col_up2:
+            file_sit_side = st.file_uploader("📐 Ảnh ngồi Nghiêng bên hông (Kiểm tra độ gù)", type=['jpg', 'png', 'jpeg'], key="u_sit_side")
+
+        has_analysis = False
+
+        if file_sit_back:
+            has_analysis = True
+            st.markdown("---")
+            st.markdown("#### 🔍 Kết quả phân tích Góc Ngồi - Sau Lưng")
+            img_b = Image.open(file_sit_back)
+            res_img_b, s_angle, hump, status_sit, valid_b = process_sitting_back(img_b)
+            if valid_b and res_img_b is not None:
+                st.image(res_img_b, caption="AI phân tích độ cân đối vai và trục lưng khi ngồi", use_container_width=True)
                 
                 if hump < 5 and s_angle < 1.5:
-                    sit_level = "🟢 Chuẩn"
+                    sit_level_b = "🟢 Chuẩn"
                 elif hump <= 10 and s_angle <= 3.0:
-                    sit_level = "🟡 Lệch/Gù Nhẹ"
+                    sit_level_b = "🟡 Lệch/Gù Nhẹ"
                 else:
-                    sit_level = "🔴 Lệch/Gù Nặng"
+                    sit_level_b = "🔴 Lệch/Gù Nặng"
 
                 s1, s2, s3, s4 = st.columns(4)
                 s1.metric("Góc lệch vai ngồi", f"{s_angle:.2f}°")
                 s2.metric("Trục lệch lưng", f"{hump:.1f}")
                 s3.metric("Đánh giá", status_sit)
-                s4.metric("Phân loại", sit_level)
+                s4.metric("Phân loại", sit_level_b)
                 
-                if sit_level == "🟢 Chuẩn":
-                    st.success("✅ Tư thế ngồi học chuẩn và cân đối.")
-                    show_exercise_recommendations("normal")
-                elif sit_level == "🟡 Lệch/Gù Nhẹ":
+                if sit_level_b == "🟢 Chuẩn":
+                    st.success("✅ Tư thế ngồi học từ sau lưng chuẩn và cân đối.")
+                elif sit_level_b == "🟡 Lệch/Gù Nhẹ":
                     st.warning("⚠ Phát hiện tư thế khom lưng hoặc lệch vai **Nhẹ** khi ngồi học.")
-                    show_exercise_recommendations("warning")
                 else:
-                    st.error("🚨 Phát hiện tư thế ngồi lệch trục sống và gù ở mức **Nặng**! Cần sửa ngay.")
-                    show_exercise_recommendations("warning")
+                    st.error("🚨 Phát hiện tư thế ngồi lệch trục sống và gù ở mức **Nặng**! Cần điều chỉnh ngay.")
             else:
-                st.error("⚠️ Không nhận diện được khung người trong ảnh ngồi.")
+                st.error("⚠️ Không nhận diện được khung người trong ảnh ngồi từ sau lưng.")
+
+        if file_sit_side:
+            has_analysis = True
+            st.markdown("---")
+            st.markdown("#### 🔍 Kết quả phân tích Góc Ngồi - Nghiêng Bên Hông")
+            img_s = Image.open(file_sit_side)
+            res_img_s, ky_sit, head_sit, status_sit_side, valid_s = process_standing_side(img_s) # Tận dụng logic đo góc nghiêng thân người
+            if valid_s and res_img_s is not None:
+                st.image(res_img_s, caption="AI phân tích độ gù cột sống ngực và cúi đầu khi ngồi học", use_container_width=True)
+                
+                if ky_sit < 4 and head_sit < 10:
+                    sit_level_s = "🟢 Chuẩn"
+                elif ky_sit <= 8 and head_sit <= 20:
+                    sit_level_s = "🟡 Khom lưng nhẹ"
+                else:
+                    sit_level_s = "🔴 Gù nặng / Cúi sát bàn"
+
+                k1, k2, k3, k4 = st.columns(4)
+                k1.metric("Chỉ số gù lưng ngồi", f"{ky_sit:.1f}")
+                k2.metric("Độ rướn đầu khi cúi", f"{head_sit:.1f}")
+                k3.metric("Đánh giá góc nghiêng", status_sit_side)
+                k4.metric("Phân loại", sit_level_s)
+                
+                if sit_level_s == "🟢 Chuẩn":
+                    st.success("✅ Góc độ cúi và lưng khi ngồi học rất chuẩn khoa học.")
+                elif sit_level_s == "🟡 Khom lưng nhẹ":
+                    st.warning("⚠️ Có xu hướng cúi sát bàn hoặc khom lưng nhẹ khi làm bài.")
+                else:
+                    st.error("🚨 Cảnh báo gù lưng và cúi đầu quá sát mặt bàn! Nguy cơ cận thị và cong vẹo cột sống cao.")
+            else:
+                st.error("⚠️ Không nhận diện rõ các mốc cơ thể ở ảnh nghiêng này.")
+
+        if has_analysis:
+            # Tổng hợp gợi ý tập luyện chung cho tư thế ngồi
+            show_exercise_recommendations("warning")
+        else:
+            if not file_sit_back and not file_sit_side:
+                st.info("👆 Vui lòng tải lên ít nhất một trong hai ảnh (Sau lưng hoặc Nghiêng bên hông) để AI bắt đầu tầm soát nhé!")
 
 # Miễn trừ trách nhiệm y tế footer
 st.markdown("""
