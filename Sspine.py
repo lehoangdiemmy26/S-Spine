@@ -367,7 +367,8 @@ with tab_app:
         [
             "1. 🧍 Đứng Tĩnh (Đo lệch vai / độ gù)", 
             "2. 🎒 Đeo Cặp Sách (Đánh giá tải trọng)",
-            "3. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)"
+            "3. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)",
+            "4. ⚖️ So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)"
         ],
         horizontal=False
     )
@@ -551,7 +552,7 @@ with tab_app:
             st.markdown("---")
             st.markdown("#### 🔍 Kết quả phân tích Góc Ngồi - Nghiêng Bên Hông")
             img_s = Image.open(file_sit_side)
-            res_img_s, ky_sit, head_sit, status_sit_side, valid_s = process_standing_side(img_s) # Tận dụng logic đo góc nghiêng thân người
+            res_img_s, ky_sit, head_sit, status_sit_side, valid_s = process_standing_side(img_s)
             if valid_s and res_img_s is not None:
                 st.image(res_img_s, caption="AI phân tích độ gù cột sống ngực và cúi đầu khi ngồi học", use_container_width=True)
                 
@@ -578,11 +579,107 @@ with tab_app:
                 st.error("⚠️ Không nhận diện rõ các mốc cơ thể ở ảnh nghiêng này.")
 
         if has_analysis:
-            # Tổng hợp gợi ý tập luyện chung cho tư thế ngồi
             show_exercise_recommendations("warning")
         else:
             if not file_sit_back and not file_sit_side:
                 st.info("👆 Vui lòng tải lên ít nhất một trong hai ảnh (Sau lưng hoặc Nghiêng bên hông) để AI bắt đầu tầm soát nhé!")
+
+    # =========================================================
+    # MỤC 4: SO SÁNH TRƯỚC & SAU KHI ĐEO CẶP (TÍNH NĂNG MỚI)
+    # =========================================================
+    elif analysis_mode == "4. ⚖️ So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)":
+        st.subheader("4. Đối Chiếu Tư Thế: Trước vs. Sau Khi Đeo Cặp Sách")
+        st.info("💡 Tính năng này giúp so sánh trực tiếp sự thay đổi của cơ thể khi mang balo so với lúc đứng thẳng bình thường. Hãy chọn góc chụp và tải lên 2 bức ảnh tương ứng.")
+
+        comp_sub_mode = st.selectbox(
+            "Chọn góc chụp so sánh:",
+            ["Chính diện / Sau lưng (So sánh độ lệch vai & mất cân bằng)", "Nghiêng bên hông (So sánh độ gù lưng & ngả người ra trước)"]
+        )
+
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            file_normal = st.file_uploader("1️⃣ Ảnh KHÔNG đeo cặp (Trạng thái gốc)", type=['jpg', 'png', 'jpeg'], key="u_comp_norm")
+        with col_b2:
+            file_backpack = st.file_uploader("2️⃣ Ảnh KHI ĐEO CẶP SÁCH", type=['jpg', 'png', 'jpeg'], key="u_comp_pack")
+
+        if file_normal and file_backpack:
+            img_norm = Image.open(file_normal)
+            img_pack = Image.open(file_backpack)
+            
+            st.markdown("---")
+            
+            if "Chính diện / Sau lưng" in comp_sub_mode:
+                res_n, angle_n, dir_n, valid_n, _ = process_standing_front(img_norm)
+                res_p, angle_p, dir_p, valid_p, _ = process_standing_front(img_pack)
+                
+                if valid_n and valid_p and res_n is not None and res_p is not None:
+                    st.image([res_n, res_p], caption=["Ảnh 1: Trước khi đeo cặp", "Ảnh 2: Khi đeo cặp sách"], use_container_width=True)
+                    
+                    delta_angle = angle_p - angle_n
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Lệch vai ban đầu", f"{angle_n:.2f}°")
+                    c2.metric("Lệch vai khi mang balo", f"{angle_p:.2f}°", delta=f"{delta_angle:+.2f}°")
+                    c3.metric("Trọng lượng balo", f"{bag_weight} kg")
+                    
+                    st.markdown("### 💡 Phân Tích & Lời Khuyên Chỉnh Dây Cặp Sách:")
+                    
+                    if abs(delta_angle) < 0.8 and angle_p < 1.5:
+                        st.success("🎉 **Tuyệt vời!** Cặp sách không làm thay đổi đáng kể độ cân bằng vai của bạn. Dây đeo hiện tại đang rất phù hợp.")
+                    else:
+                        st.warning(f"⚠️ Trọng lượng {bag_weight}kg làm góc lệch vai thay đổi **{delta_angle:+.2f}°** (Trạng thái: {dir_p}).")
+                        
+                        # Đưa ra lời khuyên cụ thể về chiều dài dây đeo
+                        if "VAI" in dir_p:
+                            sh_side = "trái" if "TRÁI" in dir_p else "phải"
+                            opp_side = "phải" if sh_side == "trái" else "trái"
+                            st.markdown(f"""
+                            * **Nguyên nhân:** Lực kéo của balo đang bị dồn lệch sang phía bên kia khiến vai bị kéo xệ hoặc lệch.
+                            * **Hành động điều chỉnh dây:** 
+                              * **Nới lỏng** dây đeo bên vai **{sh_side}** khoảng **1.0 - 1.5 cm**.
+                              * **Rút ngắn** dây đeo bên vai **{opp_side}** khoảng **1.0 cm** để cân bằng lại lực kéo đều hai bên vai.
+                              * Đảm bảo đáy balo nằm ngang thắt lưng, không bị trễ xuống quá mông.
+                            """)
+                        else:
+                            st.markdown(f"""
+                            * **Nguyên nhân:** Balo đang bị nặng hoặc quai đeo hai bên không đều lực.
+                            * **Hành động điều chỉnh dây:** 
+                              * Cả hai quai đeo đang chênh lệch lực kéo. Hãy kiểm tra và **rút ngắn đồng thời cả 2 quai đeo khoảng 2 cm** để balo áp sát hoàn toàn vào cột sống ngực, hạn chế tình trạng giật lùi về sau.
+                            """)
+                else:
+                    st.error("⚠️ AI không nhận diện rõ khung người ở một trong hai bức ảnh. Vui lòng thử lại với ảnh rõ hơn.")
+            
+            else: # Nghiêng bên hông
+                res_n, ky_n, head_n, _, valid_n = process_standing_side(img_norm)
+                res_p, ky_p, head_p, _, valid_p = process_standing_side(img_pack)
+                
+                if valid_n and valid_p and res_n is not None and res_p is not None:
+                    st.image([res_n, res_p], caption=["Ảnh 1: Trước khi đeo (Nghiêng)", "Ảnh 2: Khi đeo cặp (Nghiêng)"], use_container_width=True)
+                    
+                    delta_ky = ky_p - ky_n
+                    delta_head = head_p - head_n
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Chỉ số gù ban đầu", f"{ky_n:.1f}")
+                    c2.metric("Chỉ số gù khi mang balo", f"{ky_p:.1f}", delta=f"{delta_ky:+.1f}")
+                    c3.metric("Độ rướn đầu tăng thêm", f"{delta_head:+.1f}")
+                    
+                    st.markdown("### 💡 Phân Tích & Lời Khuyên Chỉnh Dây Cặp Sách:")
+                    
+                    if delta_ky < 2.0 and delta_head < 3.0:
+                        st.success("✅ Trọng lượng balo phân bổ tốt, không làm lưng bị khom thêm nhiều khi đứng.")
+                    else:
+                        st.warning(f"⚠️ Khi đeo cặp {bag_weight}kg, chỉ số gù lưng tăng lên **{delta_ky:+.1f} đơn vị** và cổ bị rướn ra trước nhiều hơn.")
+                        st.markdown(f"""
+                        * **Nguyên nhân:** Dây đeo cặp đang bị **quá dài**, khiến trọng tâm balo bị kéo sà xuống thấp (dưới thắt lưng), làm cơ thể phải ngả người về trước hoặc ngửa cổ để bù trừ trọng lực.
+                        * **Hành động điều chỉnh dây:**
+                          * Tiến hành **rút ngắn quai đeo balo lên khoảng 3 - 5 cm** sao cho đỉnh trên của balo ngang tầm vai và đáy balo nằm sát thắt lưng (cách eo khoảng 5cm).
+                          * Sử dụng thêm **dây đai ngực (nếu có)** để cố định hai quai không bị bè ra ngoài, giúp phân bổ đều lực lên lồng ngực thay vì đè nặng cột sống thắt lưng.
+                        """)
+                else:
+                    st.error("⚠️ Không nhận diện rõ các mốc cơ thể ở góc nghiêng này.")
+        else:
+            st.info("👆 Vui lòng tải lên đầy đủ **cả 2 bức ảnh** (Không đeo và Khi đeo cặp) để hệ thống tiến hành đối chiếu thông số và đưa ra lời khuyên chỉnh dây cụ thể!")
 
 # Miễn trừ trách nhiệm y tế footer
 st.markdown("""
