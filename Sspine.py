@@ -273,10 +273,10 @@ def process_sitting_back(image_pil):
 # =========================================================
 def show_exercise_recommendations(status_type):
     st.markdown("---")
-    st.subheader("🏋️ Lộ Trình Luyện Tập & Phục Hồi Cột Sống (S-Spine Care)")
+    st.subheader("Lộ Trình Luyện Tập & Phục Hồi Cột Sống (S-Spine Care)")
     
     if status_type == "normal":
-        st.success("🎉 **Tư thế của bạn rất chuẩn!** Hãy duy trì thói quen vận động nhẹ nhàng sau mỗi 45 phút học tập.")
+        st.success(" **Tư thế của bạn rất chuẩn!** Hãy duy trì thói quen vận động nhẹ nhàng sau mỗi 45 phút học tập.")
         ex1, ex2 = st.columns(2)
         with ex1:
             st.markdown("""
@@ -328,22 +328,22 @@ def show_exercise_recommendations(status_type):
 # =========================================================
 # GIAO DIỆN CHÍNH (TABS & MODES)
 # =========================================================
-tab_guide, tab_app = st.tabs(["📐 Hướng Dẫn Chụp Ảnh Chuẩn", "📊 Tầm Soát & Phân Tích AI"])
+tab_guide, tab_app = st.tabs([" Hướng Dẫn Chụp Ảnh Chuẩn", " Tầm Soát & Phân Tích AI"])
 
 with tab_guide:
-    st.subheader("📋 Quy Trình Chụp Ảnh Tầm Soát Chuẩn Y Khoa")
+    st.subheader("Quy Trình Chụp Ảnh Tầm Soát Chuẩn Y Khoa")
     g1, g2, g3 = st.columns(3)
     with g1:
         st.markdown("""
         <div class="guide-card">
-            <h4>👕 1. Trang Phục</h4>
+            <h4> 1. Trang Phục</h4>
             <ul><li>Mặc áo thun ôm sát body để thấy rõ đường viền vai và sống lưng.</li></ul>
         </div>
         """, unsafe_allow_html=True)
     with g2:
         st.markdown("""
         <div class="guide-card">
-            <h4>🧍 2. Góc Chụp Đa Dạng</h4>
+            <h4> 2. Góc Chụp Đa Dạng</h4>
             <ul>
                 <li><b>Chính diện/Sau lưng:</b> Đo lệch vai ngang.</li>
                 <li><b>Nghiêng bên hông (90 độ):</b> Đo độ gù & chu đầu.</li>
@@ -353,7 +353,7 @@ with tab_guide:
     with g3:
         st.markdown("""
         <div class="guide-card">
-            <h4>📸 3. Khoảng Cách</h4>
+            <h4> 3. Khoảng Cách</h4>
             <ul><li>Đặt máy ngang tầm ngực/lưng ở khoảng cách 1.5m - 2m.</li></ul>
         </div>
         """, unsafe_allow_html=True)
@@ -365,10 +365,10 @@ with tab_app:
     analysis_mode = st.radio(
         "Chọn mục tầm soát tư thế:",
         [
-            "1. 🧍 Đứng Tĩnh (Đo lệch vai / độ gù)", 
-            "2. 🎒 Đeo Cặp Sách (Đánh giá tải trọng)",
-            "3. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)",
-            "4. ⚖️ So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)"
+            "1. Đứng Tĩnh (Đo lệch vai / độ gù)", 
+            "2. Đeo Cặp Sách (Đánh giá tải trọng)",
+            "3. Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)",
+            "4. So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)"
         ],
         horizontal=False
     )
@@ -378,7 +378,7 @@ with tab_app:
     # =========================================================
     # MỤC 1: ĐỨNG TĨNH (TÙY CHỌN GÓC CHỤP)
     # =========================================================
-    if analysis_mode == "1. 🧍 Đứng Tĩnh (Đo lệch vai / độ gù)":
+    if analysis_mode == "1. Đứng Tĩnh (Đo lệch vai / độ gù)":
         st.subheader("1. Tầm Soát Tư Thế Đứng Tĩnh")
         
         standing_sub_mode = st.selectbox(
@@ -458,9 +458,9 @@ with tab_app:
     # =========================================================
     # MỤC 2: ĐEO CẶP SÁCH
     # =========================================================
-    elif analysis_mode == "2. 🎒 Đeo Cặp Sách (Đánh giá tải trọng)":
+    elif analysis_mode == "2. Đeo Cặp Sách (Đánh giá tải trọng)":
         st.subheader("2. Tầm Soát Khi Đeo Cặp Sách (Đánh giá áp lực tải trọng)")
-        st.info("💡 Tải lên **cả 2 ảnh** (Ảnh mặt trước/sau để kiểm tra lệch vai và Ảnh nghiêng bên hông để kiểm tra độ gù khi mang balo) để hệ thống tổng hợp đánh giá nhé!")
+        st.info(" Tải lên **cả 2 ảnh** (Ảnh mặt trước/sau để kiểm tra lệch vai và Ảnh nghiêng bên hông để kiểm tra độ gù khi mang balo) để hệ thống tổng hợp đánh giá nhé!")
         
         c_front, c_side = st.columns(2)
         with c_front:
@@ -504,15 +504,15 @@ with tab_app:
     # =========================================================
     # MỤC 3: TƯ THẾ NGỒI HỌC & ĐO ĐỘ GÙ (KẾT HỢP LINH HOẠT 2 GÓC CHỤP)
     # =========================================================
-    elif analysis_mode == "3. 🪑 Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)":
+    elif analysis_mode == "3. Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)":
         st.subheader("3. Tầm Soát Tư Thế Ngồi Học & Độ Gù (Kết hợp Đa Góc)")
         st.info("💡 Ở chế độ này, cậu có thể linh hoạt tải lên **1 trong 2 góc chụp** hoặc **cả 2 góc chụp** (Sau lưng để kiểm tra lệch vai khi ngồi, Nghiêng bên hông để kiểm tra độ gù lưng và cúi đầu sát bàn). Hệ thống sẽ tự động phân tích ảnh nào được cung cấp!")
 
         col_up1, col_up2 = st.columns(2)
         with col_up1:
-            file_sit_back = st.file_uploader("🪑 Ảnh ngồi từ Sau lưng (Kiểm tra lệch vai)", type=['jpg', 'png', 'jpeg'], key="u_sit_back")
+            file_sit_back = st.file_uploader(" Ảnh ngồi từ Sau lưng (Kiểm tra lệch vai)", type=['jpg', 'png', 'jpeg'], key="u_sit_back")
         with col_up2:
-            file_sit_side = st.file_uploader("📐 Ảnh ngồi Nghiêng bên hông (Kiểm tra độ gù)", type=['jpg', 'png', 'jpeg'], key="u_sit_side")
+            file_sit_side = st.file_uploader(" Ảnh ngồi Nghiêng bên hông (Kiểm tra độ gù)", type=['jpg', 'png', 'jpeg'], key="u_sit_side")
 
         has_analysis = False
 
@@ -587,7 +587,7 @@ with tab_app:
     # =========================================================
     # MỤC 4: SO SÁNH TRƯỚC & SAU KHI ĐEO CẶP (TÍNH NĂNG MỚI)
     # =========================================================
-    elif analysis_mode == "4. ⚖️ So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)":
+    elif analysis_mode == "4. So Sánh Trước & Sau Khi Đeo Cặp (Chênh lệch & Chỉnh dây)":
         st.subheader("4. Đối Chiếu Tư Thế: Trước vs. Sau Khi Đeo Cặp Sách")
         st.info("💡 Tính năng này giúp so sánh trực tiếp sự thay đổi của cơ thể khi mang balo so với lúc đứng thẳng bình thường. Hãy chọn góc chụp và tải lên 2 bức ảnh tương ứng.")
 
