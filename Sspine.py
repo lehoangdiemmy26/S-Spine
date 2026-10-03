@@ -303,7 +303,7 @@ def show_exercise_recommendations(status_type):
                 <div class="exercise-title">1. Tư thế Con Mèo - Con Bò</div>
                 <p><b>Tác dụng:</b> Tăng độ linh hoạt cột sống ngực, giảm gù.</p>
                 <p><b>Cách tập:</b> Quỳ 4 điểm. Hít võng lưng ngẩng đầu, thở cong lưng hóp bụng.</p>
-                <p>⏱️️ <b>Liều lượng:</b> 10 - 12 lần/ngày.</p>
+                <p>⏱️ <b>Liều lượng:</b> 10 - 12 lần/ngày.</p>
             </div>
             """, unsafe_allow_html=True)
         with ex2:
@@ -359,7 +359,7 @@ with tab_guide:
         """, unsafe_allow_html=True)
 
 with tab_app:
-    st.sidebar.header("⚙️️ Cấu hình Tầm Soát")
+    st.sidebar.header("⚙ Cấu hình Tầm Soát")
     bag_weight = st.sidebar.number_input("Trọng lượng cặp sách (kg):", min_value=0.0, value=4.5, step=0.5)
 
     analysis_mode = st.radio(
@@ -449,6 +449,8 @@ with tab_app:
 
     elif analysis_mode == "3. Đeo Cặp Sách (Chính diện & Nghiêng)":
         st.subheader("3. Tầm Soát Khi Đeo Cặp Sách (Đánh giá áp lực tải trọng)")
+        st.info("💡 Ở chế độ này, cậu có thể tải lên **cả 2 ảnh** (Ảnh mặt trước/sau để kiểm tra lệch vai và Ảnh nghiêng bên hông để kiểm tra độ gù khi mang balo) để hệ thống tổng hợp đánh giá nhé!")
+        
         c_front, c_side = st.columns(2)
         with c_front:
             f_front = st.file_uploader("Ảnh đeo cặp (Chính diện/Sau lưng)", type=['jpg', 'png', 'jpeg'], key="uf")
