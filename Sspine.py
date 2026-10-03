@@ -276,7 +276,7 @@ def show_exercise_recommendations(status_type):
     st.subheader("Lộ Trình Luyện Tập & Phục Hồi Cột Sống (S-Spine Care)")
     
     if status_type == "normal":
-        st.success("🎉 **Tư thế của bạn rất chuẩn!** Hãy duy trì thói quen vận động nhẹ nhàng sau mỗi 45 phút học tập.")
+        st.success(" **Tư thế của bạn rất chuẩn!** Hãy duy trì thói quen vận động nhẹ nhàng sau mỗi 45 phút học tập.")
         ex1, ex2 = st.columns(2)
         with ex1:
             st.markdown("""
@@ -328,7 +328,7 @@ def show_exercise_recommendations(status_type):
 # =========================================================
 # GIAO DIỆN CHÍNH (TABS & MODES)
 # =========================================================
-tab_guide, tab_app = st.tabs(["📖 Hướng Dẫn Chụp Ảnh Chuẩn", "🤖 Tầm Soát & Phân Tích AI"])
+tab_guide, tab_app = st.tabs(["Hướng Dẫn Chụp Ảnh Chuẩn", "Tầm Soát & Phân Tích AI"])
 
 with tab_guide:
     st.subheader("Quy Trình Chụp Ảnh Tầm Soát Chuẩn Y Khoa")
@@ -336,14 +336,14 @@ with tab_guide:
     with g1:
         st.markdown("""
         <div class="guide-card">
-            <h4>👕 1. Trang Phục</h4>
+            <h4> 1. Trang Phục</h4>
             <ul><li>Mặc áo thun ôm sát body để thấy rõ đường viền vai và sống lưng.</li></ul>
         </div>
         """, unsafe_allow_html=True)
     with g2:
         st.markdown("""
         <div class="guide-card">
-            <h4>📐 2. Góc Chụp Đa Dạng</h4>
+            <h4> 2. Góc Chụp Đa Dạng</h4>
             <ul>
                 <li><b>Chính diện/Sau lưng:</b> Đo lệch vai ngang.</li>
                 <li><b>Nghiêng bên hông (90 độ):</b> Đo độ gù & chu đầu.</li>
@@ -353,13 +353,13 @@ with tab_guide:
     with g3:
         st.markdown("""
         <div class="guide-card">
-            <h4>📏 3. Khoảng Cách</h4>
+            <h4> 3. Khoảng Cách</h4>
             <ul><li>Đặt máy ngang tầm ngực/lưng ở khoảng cách 1.5m - 2m.</li></ul>
         </div>
         """, unsafe_allow_html=True)
 
 with tab_app:
-    st.sidebar.header("⚙️ Cấu hình Tầm Soát")
+    st.sidebar.header("⚙️Cấu hình Tầm Soát")
     bag_weight = st.sidebar.number_input("Trọng lượng cặp sách (kg):", min_value=0.0, value=4.5, step=0.5)
 
     analysis_mode = st.radio(
@@ -410,7 +410,7 @@ with tab_app:
                     m3.metric("Phân loại", level_label)
                     
                     if angle < 1.2:
-                        st.success("✅ Tư thế chuẩn xác!")
+                        st.success("Tư thế chuẩn xác!")
                         show_exercise_recommendations("normal")
                     elif angle <= 3.0:
                         st.warning(f"⚠️ Dáng đứng bị **{direction}** ở mức **Nhẹ** (lệch {angle:.2f}°). Nên thực hiện các bài tập giãn cơ và chú ý dáng đi đứng.")
@@ -444,7 +444,7 @@ with tab_app:
                     s4.metric("Phân loại", level_label)
                     
                     if kyphosis < 4 and head_off < 10:
-                        st.success("✅ Đường cong cột sống sinh lý hoàn toàn bình thường!")
+                        st.success("Đường cong cột sống sinh lý hoàn toàn bình thường!")
                         show_exercise_recommendations("normal")
                     elif kyphosis <= 8 or head_off <= 20:
                         st.warning("⚠️ Phát hiện xu hướng khom vai/cổ rướn trước ở mức **Nhẹ**. Hãy tích cực tập luyện mở ngực!")
@@ -460,7 +460,7 @@ with tab_app:
     # =========================================================
     elif analysis_mode == "2. Đeo Cặp Sách (Đánh giá tải trọng)":
         st.subheader("2. Tầm Soát Khi Đeo Cặp Sách (Đánh giá áp lực tải trọng)")
-        st.info("🎒 Tải lên hoặc chụp **cả 2 ảnh** (Ảnh chính diện/sau lưng và Ảnh nghiêng bên hông) để hệ thống tổng hợp đánh giá nhé!")
+        st.info("Tải lên hoặc chụp **cả 2 ảnh** (Ảnh chính diện/sau lưng và Ảnh nghiêng bên hông) để hệ thống tổng hợp đánh giá nhé!")
         
         input_type_bag = st.radio("Chọn phương thức đầu vào:", ["Tải ảnh lên", "Chụp bằng Camera"], key="t2_bag")
 
@@ -514,28 +514,28 @@ with tab_app:
     # =========================================================
     elif analysis_mode == "3. Tư Thế Ngồi Học & Đo Độ Gù (Sau lưng & Nghiêng)":
         st.subheader("3. Tầm Soát Tư Thế Ngồi Học & Độ Gù (Kết hợp Đa Góc)")
-        st.info("💡 Bạn có thể chọn tải ảnh lên hoặc chụp trực tiếp bằng camera cho 1 hoặc cả 2 góc chụp (Sau lưng và Nghiêng bên hông).")
+        st.info(" Bạn có thể chọn tải ảnh lên hoặc chụp trực tiếp bằng camera cho 1 hoặc cả 2 góc chụp (Sau lưng và Nghiêng bên hông).")
 
         input_type_sit = st.radio("Chọn phương thức đầu vào:", ["Tải ảnh lên", "Chụp bằng Camera"], key="t3_sit")
 
         col_up1, col_up2 = st.columns(2)
         with col_up1:
             if input_type_sit == "Tải ảnh lên":
-                file_sit_back = st.file_uploader("📸 Ảnh ngồi từ Sau lưng (Kiểm tra lệch vai)", type=['jpg', 'png', 'jpeg'], key="u_sit_back")
+                file_sit_back = st.file_uploader(" Ảnh ngồi từ Sau lưng (Kiểm tra lệch vai)", type=['jpg', 'png', 'jpeg'], key="u_sit_back")
             else:
-                file_sit_back = st.camera_input("📸 Chụp ảnh ngồi từ Sau lưng", key="c_sit_back")
+                file_sit_back = st.camera_input(" Chụp ảnh ngồi từ Sau lưng", key="c_sit_back")
         with col_up2:
             if input_type_sit == "Tải ảnh lên":
-                file_sit_side = st.file_uploader("📸 Ảnh ngồi Nghiêng bên hông (Kiểm tra độ gù)", type=['jpg', 'png', 'jpeg'], key="u_sit_side")
+                file_sit_side = st.file_uploader(" Ảnh ngồi Nghiêng bên hông (Kiểm tra độ gù)", type=['jpg', 'png', 'jpeg'], key="u_sit_side")
             else:
-                file_sit_side = st.camera_input("📸 Chụp ảnh ngồi Nghiêng bên hông", key="c_sit_side")
+                file_sit_side = st.camera_input(" Chụp ảnh ngồi Nghiêng bên hông", key="c_sit_side")
 
         has_analysis = False
 
         if file_sit_back:
             has_analysis = True
             st.markdown("---")
-            st.markdown("#### 🔍 Kết quả phân tích Góc Ngồi - Sau Lưng")
+            st.markdown("####  Kết quả phân tích Góc Ngồi - Sau Lưng")
             img_b = Image.open(file_sit_back)
             res_img_b, s_angle, hump, status_sit, valid_b = process_sitting_back(img_b)
             if valid_b and res_img_b is not None:
@@ -598,7 +598,7 @@ with tab_app:
             show_exercise_recommendations("warning")
         else:
             if not file_sit_back and not file_sit_side:
-                st.info("👆 Vui lòng tải lên hoặc chụp ít nhất một trong hai ảnh (Sau lưng hoặc Nghiêng bên hông) để AI bắt đầu tầm soát nhé!")
+                st.info(" Vui lòng tải lên hoặc chụp ít nhất một trong hai ảnh (Sau lưng hoặc Nghiêng bên hông) để AI bắt đầu tầm soát nhé!")
 
     # =========================================================
     # MỤC 4: SO SÁNH TRƯỚC & SAU KHI ĐEO CẶP (CÓ THỂ CHỌN TẢI ẢNH HOẶC CAMERA)
@@ -646,10 +646,10 @@ with tab_app:
                     c2.metric("Lệch vai khi mang balo", f"{angle_p:.2f}°", delta=f"{delta_angle:+.2f}°")
                     c3.metric("Trọng lượng balo", f"{bag_weight} kg")
                     
-                    st.markdown("### 💡 Phân Tích & Lời Khuyên Chỉnh Dây Cặp Sách:")
+                    st.markdown("###  Phân Tích & Lời Khuyên Chỉnh Dây Cặp Sách:")
                     
                     if abs(delta_angle) < 0.8 and angle_p < 1.5:
-                        st.success("🎉 **Tuyệt vời!** Cặp sách không làm thay đổi đáng kể độ cân bằng vai của bạn. Dây đeo hiện tại đang rất phù hợp.")
+                        st.success(" **Tuyệt vời!** Cặp sách không làm thay đổi đáng kể độ cân bằng vai của bạn. Dây đeo hiện tại đang rất phù hợp.")
                     else:
                         st.warning(f"⚠️ Trọng lượng {bag_weight}kg làm góc lệch vai thay đổi **{delta_angle:+.2f}°** (Trạng thái: {dir_p}).")
                         
@@ -687,18 +687,18 @@ with tab_app:
                     c3.metric("Trọng lượng balo", f"{bag_weight} kg")
                     
                     if delta_ky < 2.0:
-                        st.success("🎉 Tải trọng balo không gây gù lưng hay ngả người ra trước quá mức.")
+                        st.success(" Tải trọng balo không gây gù lưng hay ngả người ra trước quá mức.")
                     else:
-                        st.warning(f"⚠️ Trọng lượng {bag_weight}kg làm tăng độ gù thêm **{delta_ky:+.1f}**.")
+                        st.warning(f" Trọng lượng {bag_weight}kg làm tăng độ gù thêm **{delta_ky:+.1f}**.")
                         st.markdown("""
                         * **Lời khuyên:** Balo đang kéo thân trên ngả về trước. Hãy điều chỉnh quai đeo ôm sát lưng, thắt dây đai ngực/bụng (nếu có) để cố định trọng tâm cơ thể.
                         """)
                 else:
-                    st.error("⚠️ Không nhận diện rõ khung người ở góc chụp nghiêng.")
+                    st.error(" Không nhận diện rõ khung người ở góc chụp nghiêng.")
 
 # Footer thông báo y khoa
 st.markdown("""
     <div class="disclaimer-box">
-        <b>⚠️ Lưu ý quan trọng:</b> Ứng dụng này chỉ hỗ trợ tầm soát và mang tính chất tham khảo học đường, không thay thế cho chẩn đoán từ bác sĩ chuyên khoa y tế.
+        <b> Lưu ý quan trọng:</b> Ứng dụng này chỉ hỗ trợ tầm soát và mang tính chất tham khảo học đường, không thay thế cho chẩn đoán từ bác sĩ chuyên khoa y tế.
     </div>
 """, unsafe_allow_html=True)
