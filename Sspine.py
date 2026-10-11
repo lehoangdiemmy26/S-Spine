@@ -2,7 +2,7 @@
 # S-Spine - tầm soát tư thế học đường từ ảnh chụp (dùng MediaPipe Pose)
 #
 # Lưu ý: app chỉ SÀNG LỌC, không chẩn đoán. Các ngưỡng trong bảng TH là ngưỡng tạm,
-# cần được hiệu chỉnh bằng dữ liệu đo thật (xem tab "Kiểm chứng").
+# cần được hiệu chỉnh bằng dữ liệu đo thật.
 
 import csv
 import io
@@ -13,7 +13,6 @@ from types import SimpleNamespace
 
 import cv2
 import numpy as np
-import pandas as pd
 import streamlit as st
 from PIL import Image, ImageOps
 import mediapipe as mp
@@ -818,81 +817,6 @@ def mode_compare(auto_roll):
 
 
 # ---------------------------------------------------------
-# Tab kiểm chứng với đo thủ công
-# ---------------------------------------------------------
-def agreement_stats(app_vals, manual_vals):
-    a, m = np.asarray(app_vals, float), np.asarray(manual_vals, float)
-    d = a - m
-    bias, sd = float(d.mean()), float(d.std(ddof=1)) if len(d) > 1 else 0.0
-    r = float(np.corrcoef(a, m)[0, 1]) if len(a) > 2 and a.std() > 0 and m.std() > 0 else float("nan")
-    return {"n": len(a), "MAE": float(np.abs(d).mean()), "bias": bias,
-            "LoA_low": bias - 1.96 * sd, "LoA_high": bias + 1.96 * sd, "r": r}
-
-
-def confusion(app_vals, manual_vals, cut):
-    a, m = np.asarray(app_vals, float) >= cut, np.asarray(manual_vals, float) >= cut
-    tp, fp, fn, tn = int((a & m).sum()), int((a & ~m).sum()), int((~a & m).sum()), int((~a & ~m).sum())
-    sens = tp / (tp + fn) if tp + fn else float("nan")
-    spec = tn / (tn + fp) if tn + fp else float("nan")
-    return tp, fp, fn, tn, sens, spec
-
-
-def tab_validate(auto_roll):
-    st.subheader("Kiểm chứng với đo thủ công")
-    st.caption("Tải nhiều ảnh, nhập góc bạn đo thủ công (ImageJ/Kinovea/thước đo góc) vào cột cuối, "
-               "app tính sai số và độ nhạy/độ đặc hiệu. Chỉ dùng ảnh đã được người chụp đồng ý.")
-    what = st.selectbox("Chỉ số cần kiểm chứng", ["Góc lệch vai (ảnh sau lưng)", "Góc tai–vai (ảnh nghiêng)",
-                                                   "Góc nghiêng thân (ảnh nghiêng)"])
-    front = what.startswith("Góc lệch vai")
-    view = view_selector("val") if front else "back"
-    files = st.file_uploader("Ảnh cần kiểm chứng", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="val_files")
-    if not files:
-        return
-    rows = []
-    for f in files:
-        res, bad = analyze_file(f, "front" if front else "side", view, "stand", auto_roll)
-        if res is None:
-            rows.append({"Ảnh": f.name, "App (độ)": None, "Đo thủ công (độ)": None, "Ghi chú": "; ".join(bad)})
-            continue
-        if front:
-            v = res.metrics["goc_lech_vai_do"]
-        elif what.startswith("Góc tai"):
-            v = res.metrics["goc_tai_vai_do"]
-        else:
-            v = res.metrics["nghieng_than_do"]
-        rows.append({"Ảnh": f.name, "App (độ)": round(v, 2), "Đo thủ công (độ)": None, "Ghi chú": reliability(res.notes)})
-    edited = st.data_editor(pd.DataFrame(rows), key="val_table", hide_index=True,
-                            disabled=["Ảnh", "App (độ)", "Ghi chú"])
-    ok = edited.dropna(subset=["App (độ)"]).copy()
-    ok["Đo thủ công (độ)"] = pd.to_numeric(ok["Đo thủ công (độ)"], errors="coerce")
-    ok = ok.dropna(subset=["Đo thủ công (độ)"])
-    if len(ok) < 3:
-        st.info("Nhập ít nhất 3 giá trị đo thủ công để xem thống kê (nên từ 30 ca trở lên).")
-        return
-    s = agreement_stats(ok["App (độ)"], ok["Đo thủ công (độ)"])
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Số ca", s["n"])
-    c2.metric("Sai số tuyệt đối TB (MAE)", f"{s['MAE']:.2f}°")
-    c3.metric("Sai lệch trung bình (bias)", f"{s['bias']:+.2f}°")
-    c4.metric("Hệ số tương quan r", "—" if math.isnan(s["r"]) else f"{s['r']:.2f}")
-    st.caption(f"Giới hạn đồng thuận 95% (Bland-Altman): {s['LoA_low']:+.2f}° đến {s['LoA_high']:+.2f}°")
-
-    st.markdown("**Độ nhạy / độ đặc hiệu theo một ngưỡng bất thường**")
-    default_cut = TH["shoulder_tilt"][0] if front else 10.0
-    cut = st.number_input("Ngưỡng (độ): từ giá trị này trở lên coi là bất thường", 0.0, 90.0, float(default_cut), 0.5, key="val_cut")
-    tp, fp, fn, tn, sens, spec = confusion(ok["App (độ)"], ok["Đo thủ công (độ)"], cut)
-    st.dataframe(pd.DataFrame([[tp, fn], [fp, tn]], index=["Đo thủ công: bất thường", "Đo thủ công: bình thường"],
-                              columns=["App: bất thường", "App: bình thường"]))
-    e1, e2 = st.columns(2)
-    e1.metric("Độ nhạy", "—" if math.isnan(sens) else f"{sens * 100:.0f}%")
-    e2.metric("Độ đặc hiệu", "—" if math.isnan(spec) else f"{spec * 100:.0f}%")
-    st.caption("Muốn chọn ngưỡng tốt, hãy thử nhiều giá trị và chọn mức cân bằng giữa độ nhạy và độ đặc hiệu "
-               "(hoặc dùng đường cong ROC trên bộ dữ liệu lớn hơn). Chuẩn đối chiếu tốt nhất là góc Cobb trên X-quang.")
-    st.download_button("⬇️ Tải bảng kiểm chứng (CSV)", edited.to_csv(index=False).encode("utf-8-sig"),
-                       file_name="kiem_chung.csv", mime="text/csv", key="dl_val")
-
-
-# ---------------------------------------------------------
 # Trang
 # ---------------------------------------------------------
 CSS = """
@@ -959,7 +883,7 @@ def tab_method():
     md = "| Chỉ số | Xanh khi nhỏ hơn | Vàng khi ≤ (lớn hơn là đỏ) |\n|---|---|---|\n"
     md += "\n".join(f"| {n} | {TH[k][0]:g} | {TH[k][1]:g} |" for n, k in rows)
     md += f"\n| Góc tai–vai (độ) | ≥ {EAR_OK:g} xanh | ≥ {EAR_WATCH:g} vàng, nhỏ hơn là đỏ |"
-    st.markdown("**Ngưỡng phân loại: tạm thời, chưa được kiểm chứng lâm sàng.** Dùng tab *Kiểm chứng* để đối chiếu và hiệu chỉnh.")
+    st.markdown("**Ngưỡng phân loại: tạm thời, chưa được kiểm chứng lâm sàng.** Cần đối chiếu với đo thủ công để hiệu chỉnh.")
     st.markdown(md)
     st.markdown(
         "**Giới hạn.**\n"
@@ -993,8 +917,8 @@ def main():
         st.markdown('<h1 class="main-title" style="margin-top: 5px;">S-Spine</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-title">Ứng dụng AI hỗ trợ tầm soát tư thế & lệch vai học đường</p>', unsafe_allow_html=True)
 
-    t_guide, t_app, t_val, t_method = st.tabs(["Hướng dẫn chụp ảnh chuẩn", "Tầm soát & phân tích AI",
-                                                "Kiểm chứng (đo thủ công)", "Phương pháp & giới hạn"])
+    t_guide, t_app, t_method = st.tabs(["Hướng dẫn chụp ảnh chuẩn", "Tầm soát & phân tích AI",
+                                         "Phương pháp & giới hạn"])
     with t_guide:
         tab_guide()
     with t_app:
@@ -1010,8 +934,6 @@ def main():
             mode_sitting(auto_roll)
         else:
             mode_compare(auto_roll)
-    with t_val:
-        tab_validate(st.session_state.get("auto_roll", True))
     with t_method:
         tab_method()
 
