@@ -3,4 +3,3 @@ mediapipe==0.10.14
 numpy<2
 opencv-python-headless
 Pillow
-pandas
