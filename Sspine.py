@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # S-Spine - tầm soát tư thế học đường từ ảnh chụp (dùng MediaPipe Pose)
 #
-# Lưu ý: app chỉ SÀNG LỌC, không chẩn đoán. Các ngưỡng trong bảng TH là ngưỡng tạm,
-# cần được hiệu chỉnh bằng dữ liệu đo thật.
+# Lưu ý: app chỉ SÀNG LỌC, không chẩn đoán. Các ngưỡng trong bảng TH là ngưỡng THAM KHẢO CỦA NHÓM
+# (chưa có nguồn chuẩn cho từng ngưỡng), cần được hiệu chỉnh bằng dữ liệu đo thật.
 
 import csv
 import io
@@ -26,14 +26,18 @@ MAX_PHOTOS = 5         # số ảnh tối đa mỗi lần
 LEVEL_EPS = 0.3        # dưới góc này coi như cân bằng
 
 ROLL_MIN_FIX = 0.5     # máy nghiêng từ 0.5° mới bù
-ROLL_MAX_FIX = 8.0     # nghiêng quá 8° thì không tự bù, yêu cầu chụp lại
+ROLL_MAX_FIX = 8.0     # nghiêng quá 8° thì không tự bù, yêu cầu chụp lại hoặc nhập tay góc nghiêng
 SYM_WARN = 0.15        # mốc vai lệch đối xứng so với viền cơ thể quá 15% bề rộng vai
 PERSON_MIN_FRAC = 0.30
 ROT_WARN_FRONT = 0.60  # rộng vai / dài thân nhỏ hơn mức này -> người bị xoay
 ROT_WARN_SIDE = 0.35   # ảnh nghiêng: hai vai cách nhau quá mức này -> chưa nghiêng 90°
 SPREAD_WARN = {"front": 2.0, "side": 8.0}   # độ dao động giữa các ảnh (độ)
 
-# Ngưỡng (t1, t2): giá trị < t1 xanh, <= t2 vàng, lớn hơn là đỏ.  TẤT CẢ ĐỀU LÀ TẠM THỜI.
+# Các cảnh báo dưới đây nghĩa là ảnh KHÔNG đạt chuẩn -> không phân tích, yêu cầu chụp lại
+BLOCKING = ("Ảnh khá tối", "Ảnh bị mờ", "Độ phân giải thấp", "Người chiếm quá ít", "Người có vẻ bị xoay",
+            "Mốc vai không đối xứng", "Thân người có vẻ chưa nghiêng 90°", "Máy có vẻ nghiêng")
+
+# Ngưỡng (t1, t2): giá trị < t1 xanh, <= t2 vàng, lớn hơn là đỏ.  TẤT CẢ LÀ NGƯỠNG THAM KHẢO CỦA NHÓM.
 TH = {
     "shoulder_tilt": (2.0, 4.0),
     "trunk_shift": (3.0, 6.0),
@@ -294,7 +298,7 @@ def analyze_front(lms, img, view, mask=None):
     p1, p2 = px(lms[L_SH], w, h), px(lms[R_SH], w, h)
     a, b = (p1, p2) if p1[0] <= p2[0] else (p2, p1)      # a = vai bên trái ảnh
     if b[0] - a[0] < 0.05 * w:
-        return None, ["Hai vai gần như trùng nhau: hãy chụp thẳng từ phía sau/trước, không chụp nghiêng"]
+        return None, ["Hai vai gần như trùng nhau: ảnh này có vẻ là ảnh NGHIÊNG. Hãy chọn góc chụp \"Nghiêng bên hông\" hoặc chụp lại thẳng từ phía sau/trước"]
 
     tilt_img = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))    # dương: vai bên phải ảnh thấp hơn
     # signed > 0 nghĩa là vai PHẢI của người thấp hơn
@@ -370,8 +374,12 @@ def analyze_side(lms, img, posture):
 
     notes = image_notes(img, lms)
     other = lms[R_SH if left else L_SH]
-    if other.visibility >= VIS_MIN and 0 <= other.x <= 1 and abs(other.x * w - sh[0]) / torso > ROT_WARN_SIDE:
-        notes.append("Thân người có vẻ chưa nghiêng 90° so với camera")
+    other_hip = lms[R_HIP if left else L_HIP]
+    off_sh = other.visibility >= VIS_MIN and 0 <= other.x <= 1 and abs(other.x * w - sh[0]) / torso > ROT_WARN_SIDE
+    off_hip = other_hip.visibility >= VIS_MIN and 0 <= other_hip.x <= 1 and abs(other_hip.x * w - hip[0]) / torso > ROT_WARN_SIDE
+    if off_sh or off_hip:
+        notes.append("Thân người có vẻ chưa nghiêng 90° so với camera (hai vai/hai hông chưa trùng nhau). "
+                     "Nếu đây là ảnh sau lưng/chính diện, hãy đổi sang góc chụp sau lưng/chính diện")
 
     level, summary = classify_side(ang, lean, posture)
 
@@ -407,9 +415,11 @@ def analyze_cached(kind, data, view, posture, auto_roll):
     if lms is None:
         return None, ["Không nhận diện được người trong ảnh"]
 
-    roll = estimate_roll(img, lms)
+    manual = isinstance(auto_roll, float) and not isinstance(auto_roll, bool)
+    roll = float(auto_roll) if manual else estimate_roll(img, lms)
     fixed = False
-    if roll is not None and auto_roll and ROLL_MIN_FIX <= abs(roll) <= ROLL_MAX_FIX:
+    limit = 20.0 if manual else ROLL_MAX_FIX
+    if roll is not None and auto_roll is not False and ROLL_MIN_FIX <= abs(roll) <= limit:
         rotated = rotate_image(img, roll)        # xoay ngược lại đúng góc máy bị nghiêng
         lms2, mask2 = detect(rotated)
         if lms2 is not None:
@@ -424,13 +434,17 @@ def analyze_cached(kind, data, view, posture, auto_roll):
 
     res.metrics["may_nghieng_uoc_luong_do"] = None if roll is None else round(roll, 2)
     res.metrics["da_bu_may_nghieng"] = fixed
+    # ảnh không đạt chuẩn -> yêu cầu chụp lại
+    if not fixed and not manual and roll is not None and abs(roll) > 1.5 and auto_roll is not False:
+        res.notes.append(f"Máy có vẻ nghiêng ≈ {roll:.1f}° nhưng không bù được. Hãy đặt máy ngang bằng hoặc nhập tay góc nghiêng máy")
+    blocked = [n for n in res.notes if n.startswith(BLOCKING)]
+    if blocked:
+        return None, blocked + ["👉 Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
     if fixed:
-        res.info.append(f"Đã bù máy nghiêng ≈ {roll:+.1f}° (ước lượng từ các đường thẳng đứng trong nền).")
+        res.info.append(f"Đã bù máy nghiêng ≈ {roll:+.1f}° ({'nhập tay' if manual else 'ước lượng từ các đường thẳng đứng trong nền'}).")
     elif roll is None:
         res.info.append("Không ước lượng được độ nghiêng của máy (nền ít đường thẳng đứng). "
                         "Hãy đặt máy cố định, ngang bằng.")
-    elif abs(roll) > 1.5:
-        res.notes.append(f"Máy có vẻ nghiêng ≈ {roll:.1f}° nhưng chưa được bù")
     return res, []
 
 
@@ -598,9 +612,9 @@ def render_side(res, caption, key, gallery=None, extra=None):
     m = res.metrics
     show_gallery(res, caption, gallery)
     c1, c2, c3 = st.columns(3)
-    c1.metric("Góc tai–vai", f"{m['goc_tai_vai_do']:.0f}°",
+    c1.metric("Đầu nhô ra trước (góc tai–vai)", f"{m['goc_tai_vai_do']:.0f}°",
               help="Góc giữa phương ngang và đường vai→tai. Càng nhỏ, đầu càng nhô ra trước. Gần với CVA nhưng dùng mốc vai thay cho C7.")
-    c2.metric("Góc nghiêng thân", f"{m['nghieng_than_do']:+.0f}°", help="Dương: thân nghiêng ra trước.")
+    c2.metric("Nghiêng thân", f"{m['nghieng_than_do']:+.0f}°", help="Dương: thân nghiêng ra trước.")
     c3.metric("Hướng quay mặt", str(m["huong_mat"]))
     show_level(res.level, res.summary)
     show_quality(res, extra)
@@ -668,7 +682,7 @@ def show_recommendations(level):
 def mode_standing(auto_roll):
     st.subheader("1. Tầm soát tư thế đứng tĩnh")
     sub = st.selectbox("Chọn góc chụp:", ["Sau lưng / Chính diện (kiểm tra lệch vai)",
-                                          "Nghiêng bên hông (kiểm tra khom lưng & đầu nhô)"])
+                                          "Nghiêng bên hông (kiểm tra tư thế khom & đầu nhô ra trước)"])
     st.caption(f"Có thể tải tối đa {MAX_PHOTOS} ảnh của cùng một người (chụp rời nhau vài giây); app lấy trung vị để giảm sai số.")
     src = source_selector("m1")
     if sub.startswith("Sau lưng"):
@@ -692,7 +706,10 @@ def mode_bag(auto_roll):
     st.info("Mục này chỉ cho biết tư thế KHI đeo cặp. Muốn biết cặp làm thay đổi tư thế bao nhiêu, hãy dùng mục 4.")
     c1, c2 = st.columns(2)
     bag = c1.number_input("Trọng lượng cặp (kg) - do bạn nhập", 0.0, 30.0, 0.0, 0.5)
-    body = c2.number_input("Cân nặng của em (kg) - không bắt buộc", 0.0, 150.0, 0.0, 1.0)
+    body = c2.number_input("Cân nặng của em (kg) - cần nhập để tính tỷ lệ cặp/cân nặng", 0.0, 150.0, 0.0, 1.0)
+    if bag > 0 and body <= 0:
+        st.warning("Chưa nhập cân nặng nên chưa tính được tỷ lệ cặp/cân nặng (chỉ số khuyến nghị ≤ 10-15%).")
+    st.caption("Cặp có thể che mốc vai/hông. Nếu mốc trên ảnh kết quả đặt sai chỗ, hãy chụp lại.")
     worst = 0
     if bag > 0 and body > 0:
         pct = bag / body * 100.0
@@ -726,7 +743,7 @@ def mode_bag(auto_roll):
 
 def mode_sitting(auto_roll):
     st.subheader("3. Tư thế ngồi học")
-    st.info("Có thể dùng một hoặc cả hai góc chụp: sau lưng (lệch vai) và nghiêng bên hông (cúi đầu, khom lưng). "
+    st.info("Có thể dùng một hoặc cả hai góc chụp: sau lưng (lệch vai) và nghiêng bên hông (cúi đầu, khom, đầu nhô ra trước). "
             "Tư thế ngồi thay đổi liên tục, nên hãy chụp vài ảnh ở các thời điểm khác nhau.")
     src = source_selector("m3")
     extra = clothing_check("m3")
@@ -752,10 +769,94 @@ def mode_sitting(auto_roll):
         st.info("Hãy tải lên hoặc chụp ít nhất một ảnh để bắt đầu.")
 
 
+# ---------------------------------------------------------
+# Gù lưng (ước tính từ ảnh có nhãn đánh dấu, người dùng chạm chọn điểm)
+# ---------------------------------------------------------
+KY_LABELS = ["C7 (đốt sống cổ 7, chỗ nhô ở gốc cổ)", "Điểm trên lưng (khoảng T4-T5)",
+             "Điểm giữa lưng (khoảng T8)", "T12 (ngang đáy xương bả vai/cuối lồng ngực)"]
+KY_DISPLAY_W = 560
+
+
+def kyphosis_angle(pts):
+    """pts: 4 điểm (x, y) theo thứ tự từ C7 xuống T12 (ảnh nghiêng).
+    Dựng đường cong x = f(y) bậc 2 qua các điểm, lấy tiếp tuyến ở C7 và T12, trả về góc giữa hai tiếp tuyến (độ)."""
+    ys = np.array([p[1] for p in pts], dtype=float)
+    xs = np.array([p[0] for p in pts], dtype=float)
+    if not np.all(np.diff(ys) > 0):
+        return None
+    c = np.polyfit(ys, xs, 2)
+    d = np.polyder(c)
+    a_top = math.degrees(math.atan(np.polyval(d, ys[0])))
+    a_bot = math.degrees(math.atan(np.polyval(d, ys[-1])))
+    return abs(a_top - a_bot)
+
+
+def mode_kyphosis():
+    st.subheader("5. Gù lưng (ước tính từ ảnh)")
+    try:
+        from streamlit_image_coordinates import streamlit_image_coordinates
+    except Exception:
+        st.error("Thiếu thư viện chạm chọn điểm. Hãy thêm `streamlit-image-coordinates` vào requirements.txt rồi triển khai lại.")
+        return
+    st.info("**Cách làm:** dán 4 nhãn màu nhỏ lên lưng (C7, hai điểm giữa lưng, T12), chụp ảnh nghiêng 90° rồi chạm lần lượt vào từng nhãn "
+            "theo thứ tự từ trên xuống. Kết quả là **góc gù ước tính từ ảnh**, không phải góc Cobb và không thay thế X-quang.")
+    src = source_selector("m5")
+    extra = clothing_check("m5")
+    files = image_inputs("Ảnh nghiêng có nhãn đánh dấu trên lưng:", "m5_side", src, multiple=False)
+    if not files:
+        return
+    data = files[0].getvalue()
+    sig = f"{len(data)}-{hash(data[:2048])}"
+    if st.session_state.get("ky_sig") != sig:
+        st.session_state.update(ky_sig=sig, ky_pts=[], ky_last=None)
+    img = load_image(data)
+    h, w = img.shape[:2]
+    scale = w / float(KY_DISPLAY_W)
+    pts = st.session_state["ky_pts"]
+    disp = cv2.resize(img, (KY_DISPLAY_W, int(round(h / scale))))
+    for i, (x, y) in enumerate(pts):
+        c = (int(x / scale), int(y / scale))
+        cv2.circle(disp, c, 6, (255, 0, 0), -1)
+        put_text(disp, str(i + 1), (c[0] + 8, c[1] - 6), 0.6, (255, 255, 0))
+    if len(pts) < 4:
+        st.markdown(f"**Chạm vào: {len(pts) + 1}/4 - {KY_LABELS[len(pts)]}**")
+    val = streamlit_image_coordinates(Image.fromarray(disp), key=f"ky_img_{sig}_{len(pts)}")
+    if val and len(pts) < 4:
+        key = (val["x"], val["y"], len(pts))
+        if st.session_state.get("ky_last") != key:
+            st.session_state["ky_last"] = key
+            k = w / float(val.get("width") or KY_DISPLAY_W)
+            pts.append((val["x"] * k, val["y"] * k))
+            st.rerun()
+    c1, c2 = st.columns(2)
+    if c1.button("↩️ Bỏ điểm vừa chọn", disabled=not pts):
+        pts.pop()
+        st.session_state["ky_last"] = None
+        st.rerun()
+    if c2.button("🗑️ Chọn lại từ đầu", disabled=not pts):
+        st.session_state.update(ky_pts=[], ky_last=None)
+        st.rerun()
+    if len(pts) < 4:
+        return
+    ang = kyphosis_angle(pts)
+    if ang is None:
+        st.error("Thứ tự điểm chưa đúng (phải đi từ C7 xuống T12, từ trên xuống dưới). Hãy chọn lại.")
+        return
+    st.metric("Góc gù ước tính từ ảnh", f"{ang:.0f}°",
+              help="Góc giữa hai tiếp tuyến của đường cong qua 4 nhãn, tại C7 và T12. Không phải góc Cobb.")
+    st.warning("Chưa có ngưỡng chuẩn cho lứa tuổi học sinh nên app **không phân mức** bình thường/bất thường. "
+               "Phương pháp ảnh có sai số so với X-quang (nghiên cứu DIPA ở người lớn: ±4°). "
+               "Nếu con số lớn hoặc có lo ngại, hãy đến cơ sở y tế chuyên khoa để được khám.")
+    if extra:
+        st.caption("• " + extra[0])
+    st.caption("Kết quả phụ thuộc vào việc bạn chạm đúng vị trí nhãn; nên đối chiếu với người có chuyên môn đo bằng thước dẻo/kyphometer.")
+
+
+
 def mode_compare(auto_roll):
     st.subheader("4. So sánh trước và sau khi đeo cặp")
     st.info("Chụp **cùng vị trí, cùng khoảng cách, cùng chiều cao máy** cho cả hai ảnh để so sánh đáng tin.")
-    sub = st.selectbox("Chọn góc chụp so sánh:", ["Sau lưng / Chính diện (lệch vai)", "Nghiêng bên hông (khom lưng, đầu nhô)"])
+    sub = st.selectbox("Chọn góc chụp so sánh:", ["Sau lưng / Chính diện (lệch vai)", "Nghiêng bên hông (tư thế khom, đầu nhô ra trước)"])
     src = source_selector("m4")
     is_front = sub.startswith("Sau lưng")
     view = view_selector("m4") if is_front else "back"
@@ -765,6 +866,8 @@ def mode_compare(auto_roll):
     with cb:
         f2 = image_inputs("2. Ảnh KHI đeo cặp", "m4_pack", src, multiple=False)
     bag = st.number_input("Trọng lượng cặp (kg) - do bạn nhập", 0.0, 30.0, 0.0, 0.5, key="m4_bag")
+    extra = clothing_check("m4")
+    st.caption("Cặp có thể che mốc vai/hông. Nếu mốc trên ảnh kết quả đặt sai chỗ, hãy chụp lại.")
     if not (f1 and f2):
         return
     kind = "front" if is_front else "side"
@@ -804,7 +907,7 @@ def mode_compare(auto_roll):
         lv = max(level_of(d_lean, TH["delta_trunk"]), level_of(-d_ear, TH["delta_ear_drop"]))
         c1, c2, c3 = st.columns(3)
         c1.metric("Nghiêng thân khi đeo", f"{r2.metrics['nghieng_than_do']:+.0f}°", delta=f"{d_lean:+.1f}°", delta_color="inverse")
-        c2.metric("Góc tai–vai khi đeo", f"{r2.metrics['goc_tai_vai_do']:.0f}°", delta=f"{d_ear:+.1f}°")
+        c2.metric("Đầu nhô ra trước (tai–vai) khi đeo", f"{r2.metrics['goc_tai_vai_do']:.0f}°", delta=f"{d_ear:+.1f}°")
         c3.metric("Cặp (bạn nhập)", f"{bag:g} kg")
         if lv == 0:
             show_level(0, "Cặp không làm thân ngả ra trước hay đầu nhô ra trước đáng kể.")
@@ -812,8 +915,9 @@ def mode_compare(auto_roll):
             show_level(lv, "Cặp kéo thân trên ngả ra trước và/hoặc đầu nhô ra trước. Hãy siết quai cho cặp áp sát lưng, "
                            "dùng đai ngực/đai bụng nếu có và giảm bớt đồ nặng.")
     for r, name in ((r1, "Ảnh 1"), (r2, "Ảnh 2")):
-        if reliability(r.notes) != "Tốt":
-            st.caption(f"{name} - độ tin cậy {reliability(r.notes)}: {'; '.join(r.notes)}")
+        nn = r.notes + extra
+        if reliability(nn) != "Tốt":
+            st.caption(f"{name} - độ tin cậy {reliability(nn)}: {'; '.join(nn)}")
 
 
 # ---------------------------------------------------------
@@ -861,18 +965,20 @@ def tab_guide():
                     '<li>Cách 1.5 - 2 m, ngang tầm ngực/lưng.</li>'
                     '<li><b>Đặt máy cố định, ngang bằng</b> (giá đỡ/bàn); máy nghiêng làm sai góc lệch vai.</li>'
                     '<li>Nền có đường thẳng đứng (khung cửa, góc tường) giúp app tự bù máy nghiêng.</li>'
-                    '<li>Chụp 3-5 ảnh rời nhau vài giây để lấy trung vị.</li></ul></div>', unsafe_allow_html=True)
+                    '<li>Chụp 3-5 ảnh rời nhau vài giây để lấy trung vị.</li>'
+                    '<li>Đo gù: dán 4 nhãn màu lên C7, hai điểm giữa lưng và T12 rồi chụp nghiêng.</li></ul></div>', unsafe_allow_html=True)
 
 
 def tab_method():
     st.subheader("Phương pháp & giới hạn")
     st.markdown(
-        "**Cách đo.** Mô hình MediaPipe Pose tìm các mốc vai, hông, tai. Mọi chỉ số là góc thật (độ) tính từ mốc.\n\n"
+        "**Cách đo.** Mô hình MediaPipe Pose tìm các mốc vai, hông, tai. Mốc do mô hình ước lượng; mọi chỉ số là góc tính trên ảnh 2D (độ) từ các mốc đó.\n\n"
         "- **Góc lệch vai:** góc giữa đường nối hai vai và phương ngang.\n"
         "- **Lệch thân so với hông:** góc đường (giữa hông → giữa vai) so với phương thẳng đứng, ảnh sau lưng/chính diện.\n"
-        "- **Góc tai–vai:** góc giữa phương ngang và đường vai → tai ở ảnh nghiêng. Gần với CVA nhưng **không phải CVA chuẩn**, "
+        "- **Đầu nhô ra trước (góc tai–vai):** góc giữa phương ngang và đường vai → tai ở ảnh nghiêng. Gần với CVA nhưng **không phải CVA chuẩn**, "
         "vì không có mốc đốt sống C7 nên dùng mốc vai thay thế.\n"
-        "- **Góc nghiêng thân:** góc đường hông → vai so với phương thẳng đứng, dương là nghiêng ra trước.\n\n"
+        "- **Nghiêng thân:** góc đường hông → vai so với phương thẳng đứng, dương là nghiêng ra trước.\n\n"
+        "- **Gù lưng (ước tính từ ảnh):** người dùng chạm chọn 4 nhãn đánh dấu trên lưng (C7 → T12); app dựng đường cong bậc 2 qua các điểm rồi tính góc giữa hai tiếp tuyến ở C7 và T12. Đây là cách làm theo tinh thần phương pháp DIPA (tiếp tuyến tại T2 và T12), **không phải góc Cobb** và chưa có ngưỡng chuẩn cho học sinh nên app chỉ hiển thị giá trị, không phân mức.\n\n"
         "**Giảm sai số.** Tự ước lượng máy nghiêng từ các đường thẳng đứng trong nền rồi xoay ảnh bù lại; "
         "kiểm tra mốc nằm trong khung, đủ rõ; so độ đối xứng của mốc vai với viền cơ thể; lấy trung vị của nhiều ảnh."
     )
@@ -883,11 +989,11 @@ def tab_method():
     md = "| Chỉ số | Xanh khi nhỏ hơn | Vàng khi ≤ (lớn hơn là đỏ) |\n|---|---|---|\n"
     md += "\n".join(f"| {n} | {TH[k][0]:g} | {TH[k][1]:g} |" for n, k in rows)
     md += f"\n| Góc tai–vai (độ) | ≥ {EAR_OK:g} xanh | ≥ {EAR_WATCH:g} vàng, nhỏ hơn là đỏ |"
-    st.markdown("**Ngưỡng phân loại: tạm thời, chưa được kiểm chứng lâm sàng.** Cần đối chiếu với đo thủ công để hiệu chỉnh.")
+    st.markdown("**Ngưỡng phân loại: ngưỡng tham khảo của nhóm, chưa có nguồn chuẩn và chưa được kiểm chứng lâm sàng.** Cần đối chiếu với đo thủ công để hiệu chỉnh.")
     st.markdown(md)
     st.markdown(
         "**Giới hạn.**\n"
-        "- Ảnh 2D không thay thế X-quang hay khám lâm sàng, không chẩn đoán vẹo/gù cột sống. Vẹo cột sống là biến dạng 3D "
+        "- Ảnh 2D không thay thế X-quang hay khám lâm sàng, không chẩn đoán vẹo/gù cột sống. Hai chỉ số ở ảnh nghiêng (đầu nhô ra trước, nghiêng thân) **không phải là đo độ gù**. Vẹo cột sống là biến dạng 3D "
         "có xoay đốt sống; nghiệm pháp cúi người (Adams) với scoliometer mới đánh giá được góc xoay thân.\n"
         "- Mốc do mô hình ước lượng; áo rộng, tóc che vai, ảnh tối/mờ vẫn có thể làm lệch mốc. App chỉ cảnh báo được một phần.\n"
         "- Việc bù máy nghiêng chỉ làm được khi nền có đủ đường thẳng đứng; nếu không, hãy đặt máy cố định, ngang bằng.\n"
@@ -898,7 +1004,7 @@ def tab_method():
 
 def main():
     logo = load_logo()
-    st.set_page_config(page_title="S-Spine | Tầm Soát Lệch Vai & Tư Thế Học Đường",
+    st.set_page_config(page_title="S-Spine | AI đánh giá và phân tích tư thế học đường",
                        page_icon=logo if logo is not None else "🛡️", layout="wide")
     st.markdown(CSS, unsafe_allow_html=True)
 
@@ -915,16 +1021,25 @@ def main():
             st.markdown("<h1>🛡️</h1>", unsafe_allow_html=True)
     with c2:
         st.markdown('<h1 class="main-title" style="margin-top: 5px;">S-Spine</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Ứng dụng AI hỗ trợ tầm soát tư thế & lệch vai học đường</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">AI đánh giá và phân tích tư thế học đường</p>', unsafe_allow_html=True)
 
-    t_guide, t_app, t_method = st.tabs(["Hướng dẫn chụp ảnh chuẩn", "Tầm soát & phân tích AI",
+    t_guide, t_app, t_method = st.tabs(["Hướng dẫn chụp ảnh chuẩn", "Đánh giá & phân tích tư thế",
                                          "Phương pháp & giới hạn"])
     with t_guide:
         tab_guide()
     with t_app:
-        auto_roll = st.checkbox("Tự động bù máy nghiêng (khuyến nghị)", value=True, key="auto_roll")
-        mode = st.radio("Chọn mục tầm soát tư thế:", ["1. Đứng tĩnh (lệch vai / khom lưng)", "2. Đeo cặp sách",
-                                                       "3. Tư thế ngồi học", "4. So sánh trước & sau khi đeo cặp"])
+        tilt_mode = st.radio("Bù máy nghiêng:", ["Tự động (khuyến nghị)", "Nhập tay góc nghiêng máy", "Không bù"],
+                             horizontal=True, key="tilt_mode")
+        if tilt_mode.startswith("Tự"):
+            auto_roll = True
+        elif tilt_mode.startswith("Nhập"):
+            auto_roll = float(st.number_input("Góc nghiêng máy (độ, dương = ảnh xoay thuận chiều kim đồng hồ)",
+                                              -20.0, 20.0, 0.0, 0.5, key="manual_roll"))
+        else:
+            auto_roll = False
+        mode = st.radio("Chọn mục tầm soát tư thế:", ["1. Đứng tĩnh (lệch vai / khom, đầu nhô ra trước)", "2. Đeo cặp sách",
+                                                       "3. Tư thế ngồi học", "4. So sánh trước & sau khi đeo cặp",
+                                                       "5. Gù lưng (ước tính từ ảnh)"])
         st.markdown("---")
         if mode.startswith("1"):
             mode_standing(auto_roll)
@@ -932,8 +1047,10 @@ def main():
             mode_bag(auto_roll)
         elif mode.startswith("3"):
             mode_sitting(auto_roll)
-        else:
+        elif mode.startswith("4"):
             mode_compare(auto_roll)
+        else:
+            mode_kyphosis()
     with t_method:
         tab_method()
 
