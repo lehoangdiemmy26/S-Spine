@@ -440,7 +440,7 @@ def analyze_cached(kind, data, view, posture, auto_roll):
         res.notes.append(f"Máy có vẻ nghiêng ≈ {roll:.1f}° nhưng không bù được. Hãy đặt máy ngang bằng hoặc nhập tay góc nghiêng máy")
     blocked = [n for n in res.notes if n.startswith(BLOCKING)]
     if blocked:
-        return None, blocked + ["👉 Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
+        return None, blocked + [" Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
     if fixed:
         res.info.append(f"Đã bù máy nghiêng ≈ {roll:+.1f}° ({'nhập tay' if manual else 'ước lượng từ các đường thẳng đứng trong nền'}).")
     elif roll is None:
@@ -798,7 +798,7 @@ def kyphosis_angle(pts):
 
 def mode_kyphosis():
     st.subheader("1.3 Gù lưng (ước tính từ ảnh)")
-    with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
+    with st.expander("Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
         st.markdown(KY_GUIDE)
     _ky_measure()
 
