@@ -536,7 +536,7 @@ def view_selector(key):
 
 
 def clothing_check(key):
-    ok = st.checkbox("Xác nhận: em mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
+    ok = st.checkbox("Xác nhận: đã mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
     return [] if ok else ["Chưa xác nhận áo ôm sát / tóc không che vai / máy cố định"]
 
 
