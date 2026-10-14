@@ -1168,6 +1168,39 @@ def tab_guide():
     </section>"""), unsafe_allow_html=True)
 
 
+def tab_method():
+    st.subheader("Phương pháp & giới hạn")
+    st.markdown(
+        "**Cách đo.** Mô hình MediaPipe Pose tìm các mốc vai, hông, tai. Mốc do mô hình ước lượng; mọi chỉ số là góc tính trên ảnh 2D (độ) từ các mốc đó.\n\n"
+        "- **Góc lệch vai:** góc giữa đường nối hai vai và phương ngang.\n"
+        "- **Lệch thân so với hông:** góc đường (giữa hông → giữa vai) so với phương thẳng đứng, ảnh sau lưng/chính diện.\n"
+        "- **Đầu nhô ra trước (góc tai–vai):** góc giữa phương ngang và đường vai → tai ở ảnh nghiêng. Gần với CVA nhưng **không phải CVA chuẩn**, "
+        "vì không có mốc đốt sống C7 nên dùng mốc vai thay thế.\n"
+        "- **Nghiêng thân:** góc đường hông → vai so với phương thẳng đứng, dương là nghiêng ra trước.\n\n"
+        "- **Gù lưng (ước tính từ ảnh):** người dùng chạm chọn 4 nhãn đánh dấu trên lưng (C7 → T12); app dựng đường cong bậc 2 qua các điểm rồi tính góc giữa hai tiếp tuyến ở C7 và T12. Đây là cách làm theo tinh thần phương pháp DIPA (tiếp tuyến tại T2 và T12), **không phải góc Cobb** và chưa có ngưỡng chuẩn cho học sinh nên app chỉ hiển thị giá trị, không phân mức.\n\n"
+        "**Giảm sai số.** Tự ước lượng máy nghiêng từ các đường thẳng đứng trong nền rồi xoay ảnh bù lại; "
+        "kiểm tra mốc nằm trong khung, đủ rõ; so độ đối xứng của mốc vai với viền cơ thể; lấy trung vị của nhiều ảnh."
+    )
+    rows = [("Lệch vai (độ)", "shoulder_tilt"), ("Lệch thân, ảnh sau lưng (độ)", "trunk_shift"),
+            ("Nghiêng thân khi đứng (độ)", "trunk_lean_stand"), ("Nghiêng thân khi ngồi (độ)", "trunk_lean_sit"),
+            ("Tăng lệch vai khi đeo cặp (độ)", "delta_tilt"), ("Tăng nghiêng thân khi đeo cặp (độ)", "delta_trunk"),
+            ("Giảm góc tai–vai khi đeo cặp (độ)", "delta_ear_drop"), ("Cặp / cân nặng (%)", "bag_ratio_pct")]
+    md = "| Chỉ số | Xanh khi nhỏ hơn | Vàng khi ≤ (lớn hơn là đỏ) |\n|---|---|---|\n"
+    md += "\n".join(f"| {n} | {TH[k][0]:g} | {TH[k][1]:g} |" for n, k in rows)
+    md += f"\n| Góc tai–vai (độ) | ≥ {EAR_OK:g} xanh | ≥ {EAR_WATCH:g} vàng, nhỏ hơn là đỏ |"
+    st.markdown("**Ngưỡng phân loại: ngưỡng tham khảo của nhóm, chưa có nguồn chuẩn và chưa được kiểm chứng lâm sàng.** Cần đối chiếu với đo thủ công để hiệu chỉnh.")
+    st.markdown(md)
+    st.markdown(
+        "**Giới hạn.**\n"
+        "- Ảnh 2D không thay thế X-quang hay khám lâm sàng, không chẩn đoán vẹo/gù cột sống. Hai chỉ số ở ảnh nghiêng (đầu nhô ra trước, nghiêng thân) **không phải là đo độ gù**. Vẹo cột sống là biến dạng 3D "
+        "có xoay đốt sống; nghiệm pháp cúi người (Adams) với scoliometer mới đánh giá được góc xoay thân.\n"
+        "- Mốc do mô hình ước lượng; áo rộng, tóc che vai, ảnh tối/mờ vẫn có thể làm lệch mốc. App chỉ cảnh báo được một phần.\n"
+        "- Việc bù máy nghiêng chỉ làm được khi nền có đủ đường thẳng đứng; nếu không, hãy đặt máy cố định, ngang bằng.\n"
+        "- Mỗi ảnh chỉ ghi lại một khoảnh khắc, chưa cho biết đó có phải thói quen lâu dài hay không.\n"
+        "- App không ghi ảnh ra đĩa hay cơ sở dữ liệu; ảnh chỉ được xử lý tạm trong bộ nhớ."
+    )
+
+
 def main():
     logo = load_logo()
     st.set_page_config(page_title="S-Spine | AI đánh giá và phân tích tư thế học đường",
