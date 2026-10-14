@@ -440,7 +440,7 @@ def analyze_cached(kind, data, view, posture, auto_roll):
         res.notes.append(f"Máy có vẻ nghiêng ≈ {roll:.1f}° nhưng không bù được. Hãy đặt máy ngang bằng hoặc nhập tay góc nghiêng máy")
     blocked = [n for n in res.notes if n.startswith(BLOCKING)]
     if blocked:
-        return None, blocked + [" Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
+        return None, blocked + ["👉 Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
     if fixed:
         res.info.append(f"Đã bù máy nghiêng ≈ {roll:+.1f}° ({'nhập tay' if manual else 'ước lượng từ các đường thẳng đứng trong nền'}).")
     elif roll is None:
@@ -536,7 +536,7 @@ def view_selector(key):
 
 
 def clothing_check(key):
-    ok = st.checkbox("Xác nhận: đã mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
+    ok = st.checkbox("Xác nhận: em mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
     return [] if ok else ["Chưa xác nhận áo ôm sát / tóc không che vai / máy cố định"]
 
 
@@ -798,7 +798,7 @@ def kyphosis_angle(pts):
 
 def mode_kyphosis():
     st.subheader("1.3 Gù lưng (ước tính từ ảnh)")
-    with st.expander("Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
+    with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
         st.markdown(KY_GUIDE)
     _ky_measure()
 
@@ -1176,7 +1176,7 @@ def tab_method():
         "- **Đầu nhô ra trước (góc tai–vai):** góc giữa phương ngang và đường vai → tai ở ảnh nghiêng. Gần với CVA nhưng **không phải CVA chuẩn**, "
         "vì không có mốc đốt sống C7 nên dùng mốc vai thay thế.\n"
         "- **Nghiêng thân:** góc đường hông → vai so với phương thẳng đứng, dương là nghiêng ra trước.\n\n"
-        "- **Gù lưng (ước tính từ ảnh):** người dùng chạm chọn 4 nhãn đánh dấu trên lưng (C7 → T12); app dựng đường cong bậc 2 qua các điểm rồi tính góc giữa hai tiếp tuyến ở C7 và T12. Đây là cách làm theo tinh thần phương pháp DIPA (tiếp tuyến tại T2 và T12), **không phải góc Cobb** và chưa có ngưỡng chuẩn cho học sinh nên app chỉ hiển thị giá trị, không phân mức.\n\n"
+        "- **Gù lưng (ước tính từ ảnh):** người dùng dán 6 nhãn lên mỏm gai (T2, T4, T6, T8, T10, T12; xác định bằng cách sờ và đếm từ C7) rồi chạm chọn từng nhãn trên ảnh nghiêng; app dựng đường cong bậc 3 qua 6 điểm rồi tính góc giữa hai tiếp tuyến ở T2 và T12. Đây là cách làm theo tinh thần phương pháp DIPA, **không phải góc Cobb** và chưa có ngưỡng chuẩn cho học sinh nên app chỉ hiển thị giá trị, không phân mức.\n\n"
         "**Giảm sai số.** Tự ước lượng máy nghiêng từ các đường thẳng đứng trong nền rồi xoay ảnh bù lại; "
         "kiểm tra mốc nằm trong khung, đủ rõ; so độ đối xứng của mốc vai với viền cơ thể; lấy trung vị của nhiều ảnh."
     )
