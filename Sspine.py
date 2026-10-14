@@ -1051,7 +1051,8 @@ CSS_HOME = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;800&display=swap');
 :root { --navy:#0B1F3A; --navy2:#12305A; --blue:#2B7BBF; --sky:#E8F3FB; --amber:#FFB547; --ink:#10243E; --mute:#4A5D75; --line:#D3E2F0; }
-.block-container { max-width: 1120px; padding-top: 2.2rem; }
+.block-container { max-width: 1120px; padding-top: 5rem; }
+@media (max-width: 640px) { .block-container { padding-top: 4.5rem; } }
 .stMarkdown, .stMarkdown p, .stApp h1, .stApp h2, .stApp h3, .stApp h4, [data-baseweb="tab"] p,
 .ss-top, .ss-hero, .ss-sec, .ss-ky, .ss-modes { font-family: 'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif; }
 [data-baseweb="tab"] p { font-weight: 600; }
