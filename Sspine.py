@@ -795,78 +795,11 @@ def kyphosis_angle(pts):
     return abs(a_top - a_bot)
 
 
-def ky_stats(app, ref):
-    """So sánh góc của app với số đo đối chiếu (thước dẻo/kyphometer)."""
-    app, ref = np.asarray(app, float), np.asarray(ref, float)
-    n = len(app)
-    diff = app - ref
-    out = {"n": n, "bias": float(diff.mean()), "rmse": float(np.sqrt((diff ** 2).mean())),
-           "loa_lo": float(diff.mean() - 1.96 * diff.std(ddof=1)), "loa_hi": float(diff.mean() + 1.96 * diff.std(ddof=1))}
-    out["r"] = float(np.corrcoef(app, ref)[0, 1])
-    a, b = np.polyfit(app, ref, 1)          # số đối chiếu ≈ a * số app + b
-    out["a"], out["b"] = float(a), float(b)
-    out["rmse_cal"] = float(np.sqrt(((a * app + b - ref) ** 2).mean()))
-    loo = []                                 # kiểm tra chéo bỏ-một để tránh tự đánh giá quá lạc quan
-    for k in range(n):
-        m = np.arange(n) != k
-        aa, bb = np.polyfit(app[m], ref[m], 1)
-        loo.append(aa * app[k] + bb - ref[k])
-    out["rmse_loo"] = float(np.sqrt((np.array(loo) ** 2).mean()))
-    return out
-
-
-def _ky_calibration():
-    import pandas as pd
-    st.subheader("Đối chiếu với số đo thủ công & hiệu chỉnh")
-    st.caption("Nhập số đo bằng thước dẻo/kyphometer do người có chuyên môn đo. Số đối chiếu này cũng có sai số, "
-               "nên đây là đối chiếu giữa hai phương pháp không phóng xạ, không phải với góc Cobb.")
-    rows = st.session_state.setdefault("ky_rows", [])
-    up = st.file_uploader("Hoặc tải lên CSV đã lưu (cột: ma_hs, goc_app, goc_thu_cong)", type=["csv"], key="ky_csv")
-    df = pd.DataFrame(rows, columns=["ma_hs", "goc_app", "goc_thu_cong"])
-    if up is not None:
-        try:
-            extra = pd.read_csv(up)[["ma_hs", "goc_app", "goc_thu_cong"]]
-            df = pd.concat([extra, df], ignore_index=True)
-        except Exception:
-            st.error("CSV phải có đủ 3 cột: ma_hs, goc_app, goc_thu_cong.")
-    if df.empty:
-        st.info("Chưa có dữ liệu đối chiếu.")
-        return
-    st.dataframe(df, use_container_width=True)
-    st.download_button("⬇️ Tải CSV dữ liệu đối chiếu", df.to_csv(index=False).encode("utf-8-sig"),
-                       "doi_chieu_gu_lung.csv", "text/csv")
-    d = df.dropna()
-    if len(d) < 5:
-        st.warning("Cần ít nhất 5 học sinh để tính thống kê (nên 20–30).")
-        return
-    r = ky_stats(d["goc_app"], d["goc_thu_cong"])
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Số học sinh (n)", r["n"])
-    c2.metric("Tương quan r", f"{r['r']:.2f}")
-    c3.metric("Sai số RMSE", f"{r['rmse']:.1f}°")
-    st.write(f"- Độ chênh trung bình (app − thủ công): **{r['bias']:+.1f}°**; khoảng đồng thuận 95% (Bland–Altman): "
-             f"**{r['loa_lo']:+.1f}° đến {r['loa_hi']:+.1f}°**")
-    st.write(f"- Hồi quy: số đối chiếu ≈ **{r['a']:.2f} × số app + {r['b']:+.1f}**")
-    st.write(f"- RMSE sau hiệu chỉnh: {r['rmse_cal']:.1f}° (trên chính dữ liệu này); kiểm tra chéo bỏ-một: **{r['rmse_loo']:.1f}°**")
-    if r["n"] < 20:
-        st.warning("n < 20: hệ số hồi quy chưa đáng tin. Chỉ nên dùng để tham khảo.")
-    if r["rmse_loo"] >= r["rmse"]:
-        st.info("Hiệu chỉnh không giảm sai số khi kiểm tra chéo, nên không nên áp dụng hệ số này.")
-    elif st.button("Áp dụng hệ số hiệu chỉnh này cho mục đo gù"):
-        st.session_state["ky_cal"] = (r["a"], r["b"])
-        st.success("Đã áp dụng. Kết quả đo sẽ hiện thêm dòng góc đã hiệu chỉnh.")
-    if st.session_state.get("ky_cal") and st.button("Bỏ hiệu chỉnh"):
-        st.session_state.pop("ky_cal")
-        st.rerun()
-
-
 def mode_kyphosis():
     st.subheader("5. Gù lưng (ước tính từ ảnh)")
     with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
         st.markdown(KY_GUIDE)
     _ky_measure()
-    st.divider()
-    _ky_calibration()
 
 
 KY_GUIDE = """
@@ -942,15 +875,6 @@ def _ky_measure():
         return
     st.metric("Góc gù ước tính từ ảnh", f"{ang:.0f}°",
               help="Góc giữa hai tiếp tuyến của đường cong qua 6 nhãn, tại T2 và T12. Không phải góc Cobb.")
-    cal = st.session_state.get("ky_cal")
-    if cal:
-        st.metric("Góc gù đã hiệu chỉnh (theo dữ liệu đối chiếu của nhóm)", f"{cal[0] * ang + cal[1]:.0f}°")
-    with st.form("ky_log", clear_on_submit=True):
-        ma = st.text_input("Mã học sinh (ẩn danh, ví dụ HS01)")
-        ref = st.number_input("Số đo đối chiếu (thước dẻo/kyphometer, độ) - nếu có", 0.0, 120.0, 0.0, 0.5)
-        if st.form_submit_button("Lưu vào bảng đối chiếu") and ma and ref > 0:
-            st.session_state.setdefault("ky_rows", []).append({"ma_hs": ma, "goc_app": round(ang, 1), "goc_thu_cong": ref})
-            st.success("Đã lưu. Kéo xuống phần Đối chiếu để xem thống kê.")
     st.warning("Chưa có ngưỡng chuẩn cho lứa tuổi học sinh nên app **không phân mức** bình thường/bất thường. "
                "Phương pháp ảnh có sai số so với X-quang (nghiên cứu DIPA ở người lớn: ±4°, nhưng bản này của nhóm chưa kiểm chứng). "
                "Nếu con số lớn hoặc có lo ngại, hãy đến cơ sở y tế chuyên khoa để được khám.")
