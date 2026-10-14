@@ -681,7 +681,7 @@ def show_recommendations(level):
 # Các mục chức năng
 # ---------------------------------------------------------
 def mode_standing(auto_roll):
-    st.subheader("1. Tầm soát tư thế đứng tĩnh")
+    st.subheader("1.1 Đứng tĩnh (lệch vai / khom, đầu nhô ra trước)")
     sub = st.selectbox("Chọn góc chụp:", ["Sau lưng / Chính diện (kiểm tra lệch vai)",
                                           "Nghiêng bên hông (kiểm tra tư thế khom & đầu nhô ra trước)"])
     st.caption(f"Có thể tải tối đa {MAX_PHOTOS} ảnh của cùng một người (chụp rời nhau vài giây); app lấy trung vị để giảm sai số.")
@@ -703,8 +703,8 @@ def mode_standing(auto_roll):
 
 
 def mode_bag(auto_roll):
-    st.subheader("2. Tầm soát khi đeo cặp sách")
-    st.info("Mục này chỉ cho biết tư thế KHI đeo cặp. Muốn biết cặp làm thay đổi tư thế bao nhiêu, hãy dùng mục 4.")
+    st.subheader("1.2 Đeo cặp sách")
+    st.info("Mục này chỉ cho biết tư thế KHI đeo cặp. Muốn biết cặp làm thay đổi tư thế bao nhiêu, hãy dùng mục 3 (So sánh trước & sau khi đeo cặp).")
     c1, c2 = st.columns(2)
     bag = c1.number_input("Trọng lượng cặp (kg) - do bạn nhập", 0.0, 30.0, 0.0, 0.5)
     body = c2.number_input("Cân nặng của em (kg) - cần nhập để tính tỷ lệ cặp/cân nặng", 0.0, 150.0, 0.0, 1.0)
@@ -743,7 +743,7 @@ def mode_bag(auto_roll):
 
 
 def mode_sitting(auto_roll):
-    st.subheader("3. Tư thế ngồi học")
+    st.subheader("2. Tư thế ngồi học")
     st.info("Có thể dùng một hoặc cả hai góc chụp: sau lưng (lệch vai) và nghiêng bên hông (cúi đầu, khom, đầu nhô ra trước). "
             "Tư thế ngồi thay đổi liên tục, nên hãy chụp vài ảnh ở các thời điểm khác nhau.")
     src = source_selector("m3")
@@ -797,7 +797,7 @@ def kyphosis_angle(pts):
 
 
 def mode_kyphosis():
-    st.subheader("5. Gù lưng (ước tính từ ảnh)")
+    st.subheader("1.3 Gù lưng (ước tính từ ảnh)")
     with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
         st.markdown(KY_GUIDE)
     _ky_measure()
@@ -886,7 +886,7 @@ def _ky_measure():
 
 
 def mode_compare(auto_roll):
-    st.subheader("4. So sánh trước và sau khi đeo cặp")
+    st.subheader("3. So sánh trước và sau khi đeo cặp")
     st.info("Chụp **cùng vị trí, cùng khoảng cách, cùng chiều cao máy** cho cả hai ảnh để so sánh đáng tin.")
     sub = st.selectbox("Chọn góc chụp so sánh:", ["Sau lưng / Chính diện (lệch vai)", "Nghiêng bên hông (tư thế khom, đầu nhô ra trước)"])
     src = source_selector("m4")
@@ -1151,20 +1151,18 @@ def tab_guide():
       <div>
         <div class="ss-st" role="heading" aria-level="2">Đo gù lưng: dán 6 nhãn dọc cột sống</div>
         <p>Dán nhãn màu nhỏ lên mỏm gai T2, T4, T6, T8, T10, T12, chụp nghiêng 90°, rồi chạm lần lượt vào từng nhãn trên ảnh. App dựng đường cong qua 6 điểm và tính góc giữa hai tiếp tuyến ở T2 và T12.</p>
-        <p>Mặc áo ba lỗ hở lưng ôm sát để dán trực tiếp lên da, không cần cởi áo. Cách tìm từng vị trí có trong mục 5.</p>
+        <p>Mặc áo ba lỗ hở lưng ôm sát để dán trực tiếp lên da, không cần cởi áo. Cách tìm từng vị trí có trong mục 1 → Gù lưng.</p>
         <div class="ss-note">Đây là góc gù ước tính từ ảnh, không phải góc Cobb và chưa thay thế X-quang.</div>
       </div>
     </section>"""), unsafe_allow_html=True)
 
     st.markdown(_one_line("""
     <section class="ss-sec">
-      <div class="ss-st" role="heading" aria-level="2">5 mục kiểm tra</div>
+      <div class="ss-st" role="heading" aria-level="2">3 mục kiểm tra</div>
       <ul class="ss-modes">
-        <li><b>1. Đứng tĩnh</b>Lệch vai, khom, đầu nhô ra trước</li>
-        <li><b>2. Đeo cặp sách</b>Tư thế khi đeo cặp và tỷ lệ cặp/cân nặng</li>
-        <li><b>3. Ngồi học</b>Tư thế khi ngồi</li>
-        <li><b>4. Trước &amp; sau đeo cặp</b>So sánh hai ảnh của cùng một em</li>
-        <li><b>5. Gù lưng</b>Góc gù ước tính từ 6 nhãn</li>
+        <li><b>1. Tư thế đứng</b>Đứng tĩnh (lệch vai, khom, đầu nhô ra trước), đeo cặp sách và gù lưng ước tính từ 6 nhãn</li>
+        <li><b>2. Ngồi học</b>Tư thế khi ngồi</li>
+        <li><b>3. Trước &amp; sau đeo cặp</b>So sánh hai ảnh của cùng một em</li>
       </ul>
     </section>"""), unsafe_allow_html=True)
 
@@ -1229,20 +1227,23 @@ def main():
                                               -20.0, 20.0, 0.0, 0.5, key="manual_roll"))
         else:
             auto_roll = False
-        mode = st.radio("Chọn mục tầm soát tư thế:", ["1. Đứng tĩnh (lệch vai / khom, đầu nhô ra trước)", "2. Đeo cặp sách",
-                                                       "3. Tư thế ngồi học", "4. So sánh trước & sau khi đeo cặp",
-                                                       "5. Gù lưng (ước tính từ ảnh)"])
+        mode = st.radio("Chọn mục tầm soát tư thế:", ["1. Tư thế đứng (đứng tĩnh, đeo cặp, gù lưng)",
+                                                       "2. Tư thế ngồi học", "3. So sánh trước & sau khi đeo cặp"], key="main_mode")
         st.markdown("---")
         if mode.startswith("1"):
-            mode_standing(auto_roll)
+            sub = st.radio("Chức năng:", ["Đứng tĩnh", "Đeo cặp sách", "Gù lưng (ước tính từ ảnh)"],
+                           horizontal=True, key="sub_mode_1")
+            st.markdown("---")
+            if sub.startswith("Đứng"):
+                mode_standing(auto_roll)
+            elif sub.startswith("Đeo"):
+                mode_bag(auto_roll)
+            else:
+                mode_kyphosis()
         elif mode.startswith("2"):
-            mode_bag(auto_roll)
-        elif mode.startswith("3"):
             mode_sitting(auto_roll)
-        elif mode.startswith("4"):
-            mode_compare(auto_roll)
         else:
-            mode_kyphosis()
+            mode_compare(auto_roll)
     with t_method:
         tab_method()
 
