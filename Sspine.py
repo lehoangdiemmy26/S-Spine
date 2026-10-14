@@ -4,6 +4,7 @@
 # Lưu ý: app chỉ SÀNG LỌC, không chẩn đoán. Các ngưỡng trong bảng TH là ngưỡng THAM KHẢO CỦA NHÓM
 # (chưa có nguồn chuẩn cho từng ngưỡng), cần được hiệu chỉnh bằng dữ liệu đo thật.
 
+import base64
 import csv
 import io
 import math
@@ -954,21 +955,6 @@ def mode_compare(auto_roll):
 # ---------------------------------------------------------
 # Trang
 # ---------------------------------------------------------
-CSS = """
-<style>
-.stApp { background-color: #FFFFFF; color: #1A202C; }
-.main-title { color: #0284C7; font-weight: 800; font-size: 2.5rem; margin-bottom: 0px; }
-.sub-title { color: #475569; font-size: 1.05rem; font-weight: 500; margin-bottom: 20px; }
-[data-testid="stFileUploadDropzone"] { background-color: #F8FAFC !important; border: 2px dashed #38BDF8 !important; border-radius: 12px !important; }
-[data-testid="stMetricValue"] { color: #0F172A !important; font-weight: 700 !important; }
-.guide-card { background-color: #F0F9FF; border-left: 5px solid #0284C7; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-.exercise-card { background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
-.exercise-title { color: #0369A1; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; }
-.disclaimer-box { background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 12px; border-radius: 8px; color: #92400E; font-size: 0.9rem; margin-top: 30px; text-align: center; }
-</style>
-"""
-
-
 def load_logo():
     for name in ["gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png",
                  "gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.jpg"]:
@@ -979,80 +965,221 @@ def load_logo():
     return None
 
 
+# ---------------------------------------------------------
+# Trang đầu (tab Hướng dẫn): giao diện
+# ---------------------------------------------------------
+
+
+def _one_line(html):
+    return "".join(line.strip() for line in html.strip().splitlines())
+
+
+def _curve(t):
+    """Đường cong cột sống nhìn nghiêng (mặt hướng sang phải): gù ngực rồi ưỡn thắt lưng. Trả về (x, y)."""
+    return (175 - 34 * math.sin(2 * math.pi * t) + 14 * (1 - t) ** 3, 70 + 330 * t)
+
+
+def _tangent(t, e=1e-3):
+    (x0, y0), (x1, y1) = _curve(t - e), _curve(t + e)
+    return x1 - x0, y1 - y0
+
+
+def spine_svg(mode):
+    """mode='hero': cột sống + mốc tai-vai-hông. mode='ky': cột sống + 6 nhãn T2..T12 ở mặt lưng."""
+    n = 19
+    parts = []
+    for i in range(n):
+        t = i / (n - 1)
+        x, y = _curve(t)
+        dx, dy = _tangent(t)
+        ang = -math.degrees(math.atan2(dx, dy))
+        w, h = 24 + 12 * t, 14 + 5 * t
+        parts.append(f'<rect class="v" style="animation-delay:{i * 55}ms" x="{-w / 2:.1f}" y="{-h / 2:.1f}" '
+                     f'width="{w:.1f}" height="{h:.1f}" rx="5" transform="translate({x:.1f} {y:.1f}) rotate({ang:.1f})"/>')
+    body = "".join(parts)
+    if mode == "hero":
+        ex, ey = 192, 40          # tai
+        sx, sy = 183, 110         # vai
+        hx, hy = 194, 354         # hông
+        body = (f'<circle cx="200" cy="36" r="27" fill="none" stroke="#8FB4D9" stroke-width="2"/>' + body +
+                f'<g class="lm">'
+                f'<line x1="{ex}" y1="{ey}" x2="{ex}" y2="{hy + 14}" stroke="#E7EEF7" stroke-width="1.5" stroke-dasharray="4 5"/>'
+                f'<line x1="{ex}" y1="{ey}" x2="{sx}" y2="{sy}" stroke="#FFB547" stroke-width="2.5"/>'
+                f'<line x1="{sx}" y1="{sy}" x2="{sx + 70}" y2="{sy}" stroke="#FFB547" stroke-width="1.5" stroke-dasharray="4 4"/>'
+                f'<path d="M {sx + 34} {sy} A 34 34 0 0 0 {sx + 34 * math.cos(math.radians(-83)):.1f} {sy + 34 * math.sin(math.radians(-83)):.1f}" '
+                f'fill="none" stroke="#FFB547" stroke-width="2"/>'
+                f'<circle cx="{ex}" cy="{ey}" r="6" fill="#FFB547"/><circle cx="{sx}" cy="{sy}" r="6" fill="#FFB547"/>'
+                f'<circle cx="{hx}" cy="{hy}" r="6" fill="#FFB547"/>'
+                f'<text x="236" y="44" class="tx">Tai</text><text x="216" y="132" class="tx">Vai</text>'
+                f'<text x="216" y="360" class="tx">Hông</text>'
+                f'<text x="{sx + 44}" y="{sy - 24}" class="tx s">góc tai–vai</text></g>')
+        return (f'<svg class="art" viewBox="0 0 360 430" role="img" aria-label="Sơ đồ cột sống nhìn nghiêng với các mốc tai, vai, hông">'
+                f'{body}</svg>')
+    labels = ["T2", "T4", "T6", "T8", "T10", "T12"]
+    marks = []
+    ts = [0.10 + i * (0.45 / 5) for i in range(6)]
+    for lab, t in zip(labels, ts):
+        x, y = _curve(t)
+        dx, dy = _tangent(t)
+        ln = math.hypot(dx, dy)
+        nx, ny = -dy / ln, dx / ln          # pháp tuyến hướng ra phía lưng (bên trái)
+        mx, my = x + nx * 30, y + ny * 30
+        marks.append((lab, t, mx, my, dx / ln, dy / ln))
+    g = ""
+    for lab, t, mx, my, ux, uy in marks:
+        if lab in ("T2", "T12"):
+            g += (f'<line x1="{mx - ux * 60:.1f}" y1="{my - uy * 60:.1f}" x2="{mx + ux * 60:.1f}" y2="{my + uy * 60:.1f}" '
+                  f'stroke="#E08A00" stroke-width="2" stroke-dasharray="5 4"/>')
+    for lab, t, mx, my, ux, uy in marks:
+        g += (f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="8" fill="#FFB547" stroke="#fff" stroke-width="2"/>'
+              f'<text x="{mx - 16:.1f}" y="{my + 5:.1f}" text-anchor="end" class="tk">{lab}</text>')
+    return (f'<svg class="art" viewBox="0 0 360 430" role="img" aria-label="Sơ đồ 6 nhãn dán trên lưng từ T2 đến T12">'
+            f'{body}{g}</svg>')
+
+
+def logo_uri(logo):
+    if logo is None:
+        return None
+    im = logo.convert("RGBA")
+    im.thumbnail((120, 120))
+    buf = io.BytesIO()
+    im.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+CSS_HOME = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;800&display=swap');
+:root { --navy:#0B1F3A; --navy2:#12305A; --blue:#2B7BBF; --sky:#E8F3FB; --amber:#FFB547; --ink:#10243E; --mute:#4A5D75; --line:#D3E2F0; }
+.block-container { max-width: 1120px; padding-top: 2.2rem; }
+.stMarkdown, .stMarkdown p, .stApp h1, .stApp h2, .stApp h3, .stApp h4, [data-baseweb="tab"] p,
+.ss-top, .ss-hero, .ss-sec, .ss-ky, .ss-modes { font-family: 'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif; }
+[data-baseweb="tab"] p { font-weight: 600; }
+[data-baseweb="tab-highlight"] { background-color: var(--navy) !important; }
+
+.ss-top { display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+.ss-logo { width:48px; height:48px; border-radius:50%; flex:none; }
+.ss-name { font-size:1.55rem; font-weight:800; color:var(--navy); line-height:1.1; }
+.ss-tag { font-size:.95rem; color:var(--mute); margin-top:2px; }
+
+.ss-hero { display:grid; grid-template-columns: 1.15fr .85fr; gap:8px; align-items:center; background:var(--navy);
+  border-radius:24px; padding:44px 44px 36px; margin:6px 0 40px; overflow:hidden; }
+.ss-hero .ss-h { color:#fff; font-size:clamp(1.8rem, 3.6vw, 2.9rem); font-weight:800; line-height:1.14; letter-spacing:-.01em; max-width:15em; }
+.ss-hero p { color:#B9CCE3; font-size:1.05rem; line-height:1.65; max-width:34em; margin:18px 0 26px; }
+.ss-hint { display:inline-block; border:1.5px solid var(--amber); color:var(--amber); border-radius:999px; padding:8px 18px; font-weight:600; font-size:.92rem; }
+.ss-hero .art { width:100%; max-height:440px; }
+.ss-hero .v { fill:#6FB8EA; opacity:0; animation: ssIn .5s ease forwards; }
+.ss-hero .lm { opacity:0; animation: ssIn .6s ease 1.3s forwards; }
+.ss-hero .tx { fill:#fff; font:600 14px 'Be Vietnam Pro', sans-serif; }
+.ss-hero .tx.s { fill:var(--amber); font-size:12px; }
+@keyframes ssIn { to { opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .ss-hero .v, .ss-hero .lm { animation:none; opacity:1; } }
+
+.ss-sec { margin: 0 0 40px; }
+.ss-sec .ss-st { font-size:1.45rem; font-weight:800; color:var(--navy); margin-bottom:18px; }
+.ss-steps { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; }
+.ss-steps li { position:relative; background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px 18px 18px; color:var(--ink); font-size:.93rem; line-height:1.6; }
+.ss-steps .n { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:var(--navy); color:#fff; font-weight:800; margin-bottom:12px; }
+.ss-steps b { display:block; font-size:1.05rem; color:var(--navy); margin-bottom:6px; }
+.ss-warn { margin-top:16px; color:var(--mute); font-size:.92rem; }
+
+.ss-ky { display:grid; grid-template-columns:.8fr 1.2fr; gap:36px; align-items:center; background:var(--sky); border-radius:24px; padding:34px 40px; margin-bottom:40px; }
+.ss-ky .art { width:100%; max-height:400px; }
+.ss-ky .v { fill:#8FBDE0; }
+.ss-ky .tk { fill:var(--navy); font:700 15px 'Be Vietnam Pro', sans-serif; }
+.ss-ky .ss-st { font-size:1.45rem; font-weight:800; color:var(--navy); margin-bottom:12px; }
+.ss-ky p { color:var(--ink); line-height:1.7; margin:0 0 12px; }
+.ss-note { border-left:4px solid var(--amber); background:#fff; border-radius:0 10px 10px 0; padding:10px 14px; color:var(--ink); font-size:.92rem; }
+
+.ss-modes { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; }
+.ss-modes li { border:1px solid var(--line); border-radius:12px; padding:14px 16px; color:var(--mute); font-size:.9rem; line-height:1.5; }
+.ss-modes b { display:block; color:var(--navy); font-size:.98rem; margin-bottom:4px; }
+
+.disclaimer-box { background:#FFF8E6; border:1px solid #F3DDA0; padding:12px 16px; border-radius:12px; color:#7A4B07; font-size:.9rem; margin-top:30px; text-align:center; }
+[data-testid="stFileUploadDropzone"] { background-color:#F8FAFC !important; border:2px dashed #38BDF8 !important; border-radius:12px !important; }
+[data-testid="stMetricValue"] { color:#0F172A !important; font-weight:700 !important; }
+.exercise-card { background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:15px; margin-bottom:15px; }
+.exercise-title { color:#0369A1; font-weight:700; font-size:1.1rem; margin-bottom:8px; }
+.stApp { background-color:#FFFFFF; color:#1A202C; }
+
+@media (max-width: 860px) {
+  .ss-hero { grid-template-columns:1fr; padding:30px 24px 20px; }
+  .ss-hero .art { max-height:300px; }
+  .ss-steps { grid-template-columns:1fr 1fr; }
+  .ss-ky { grid-template-columns:1fr; padding:26px 22px; }
+  .ss-ky .art { max-height:300px; }
+}
+@media (max-width: 520px) { .ss-steps { grid-template-columns:1fr; } }
+</style>
+"""
+
+
+def header_html(logo):
+    uri = logo_uri(logo)
+    img = f'<img class="ss-logo" src="{uri}" alt="Logo S-Spine"/>' if uri else ""
+    return _one_line(f'<div class="ss-top">{img}<div><div class="ss-name">S-Spine</div>'
+                     f'<div class="ss-tag">AI đánh giá và phân tích tư thế học đường</div></div></div>')
+
+
 def tab_guide():
-    st.subheader("Quy trình chụp ảnh tầm soát chuẩn")
-    g1, g2, g3 = st.columns(3)
-    with g1:
-        st.markdown('<div class="guide-card"><h4>1. Trang phục</h4><ul>'
-                    '<li>Áo thun ôm sát, không áo khoác dày hay áo rộng.</li>'
-                    '<li>Buộc gọn tóc dài để lộ cổ và vai.</li></ul></div>', unsafe_allow_html=True)
-    with g2:
-        st.markdown('<div class="guide-card"><h4>2. Góc chụp</h4><ul>'
-                    '<li><b>Sau lưng/chính diện:</b> máy thẳng góc, người đứng thẳng đối diện.</li>'
-                    '<li><b>Nghiêng:</b> quay đúng 90°, thấy đủ từ đầu đến hông.</li>'
-                    '<li>Chọn đúng "chụp từ phía sau lưng / phía trước".</li></ul></div>', unsafe_allow_html=True)
-    with g3:
-        st.markdown('<div class="guide-card"><h4>3. Máy ảnh</h4><ul>'
-                    '<li>Cách 1.5 - 2 m, ngang tầm ngực/lưng.</li>'
-                    '<li><b>Đặt máy cố định, ngang bằng</b> (giá đỡ/bàn); máy nghiêng làm sai góc lệch vai.</li>'
-                    '<li>Nền có đường thẳng đứng (khung cửa, góc tường) giúp app tự bù máy nghiêng.</li>'
-                    '<li>Chụp 3-5 ảnh rời nhau vài giây để lấy trung vị.</li>'
-                    '<li>Đo gù: dán 4 nhãn màu lên C7, hai điểm giữa lưng và T12 rồi chụp nghiêng.</li></ul></div>', unsafe_allow_html=True)
+    st.markdown(_one_line(f"""
+    <section class="ss-hero">
+      <div>
+        <div class="ss-h" role="heading" aria-level="2">Chụp một tấm ảnh, thấy tư thế đang lệch ở đâu</div>
+        <p>S-Spine tìm vị trí tai, vai, hông trên ảnh rồi tính các góc tư thế. Kết quả chỉ để sàng lọc, không thay thế chẩn đoán của bác sĩ.</p>
+        <span class="ss-hint">Bắt đầu ở tab “Đánh giá &amp; phân tích tư thế”</span>
+      </div>
+      <div>{spine_svg("hero")}</div>
+    </section>"""), unsafe_allow_html=True)
 
+    st.markdown(_one_line("""
+    <section class="ss-sec">
+      <div class="ss-st" role="heading" aria-level="2">Chụp đúng trong 4 bước</div>
+      <ol class="ss-steps">
+        <li><div class="n">1</div><b>Mặc gọn</b>Áo thun ôm sát, không áo khoác dày hay áo rộng. Buộc gọn tóc dài để lộ cổ và vai.</li>
+        <li><div class="n">2</div><b>Đứng đúng hướng</b>Ảnh sau lưng hoặc chính diện: đứng thẳng đối diện máy. Ảnh nghiêng: quay đúng 90°, thấy đủ từ đầu đến hông. Nhớ chọn đúng “chụp từ phía sau lưng / phía trước” trong app.</li>
+        <li><div class="n">3</div><b>Đặt máy</b>Cách 1,5–2 m, ngang tầm ngực/lưng, cố định và ngang bằng (giá đỡ hoặc bàn). Nền có khung cửa hay góc tường giúp app bù khi máy hơi nghiêng.</li>
+        <li><div class="n">4</div><b>Chụp nhiều ảnh</b>Chụp 3–5 ảnh cách nhau vài giây. App lấy giá trị trung vị để giảm sai số.</li>
+      </ol>
+      <div class="ss-warn">Ảnh chưa đạt chuẩn (mờ, tối, người bị xoay, máy nghiêng…) sẽ bị từ chối và app yêu cầu chụp lại.</div>
+    </section>"""), unsafe_allow_html=True)
 
-def tab_method():
-    st.subheader("Phương pháp & giới hạn")
-    st.markdown(
-        "**Cách đo.** Mô hình MediaPipe Pose tìm các mốc vai, hông, tai. Mốc do mô hình ước lượng; mọi chỉ số là góc tính trên ảnh 2D (độ) từ các mốc đó.\n\n"
-        "- **Góc lệch vai:** góc giữa đường nối hai vai và phương ngang.\n"
-        "- **Lệch thân so với hông:** góc đường (giữa hông → giữa vai) so với phương thẳng đứng, ảnh sau lưng/chính diện.\n"
-        "- **Đầu nhô ra trước (góc tai–vai):** góc giữa phương ngang và đường vai → tai ở ảnh nghiêng. Gần với CVA nhưng **không phải CVA chuẩn**, "
-        "vì không có mốc đốt sống C7 nên dùng mốc vai thay thế.\n"
-        "- **Nghiêng thân:** góc đường hông → vai so với phương thẳng đứng, dương là nghiêng ra trước.\n\n"
-        "- **Gù lưng (ước tính từ ảnh):** người dùng chạm chọn 4 nhãn đánh dấu trên lưng (C7 → T12); app dựng đường cong bậc 2 qua các điểm rồi tính góc giữa hai tiếp tuyến ở C7 và T12. Đây là cách làm theo tinh thần phương pháp DIPA (tiếp tuyến tại T2 và T12), **không phải góc Cobb** và chưa có ngưỡng chuẩn cho học sinh nên app chỉ hiển thị giá trị, không phân mức.\n\n"
-        "**Giảm sai số.** Tự ước lượng máy nghiêng từ các đường thẳng đứng trong nền rồi xoay ảnh bù lại; "
-        "kiểm tra mốc nằm trong khung, đủ rõ; so độ đối xứng của mốc vai với viền cơ thể; lấy trung vị của nhiều ảnh."
-    )
-    rows = [("Lệch vai (độ)", "shoulder_tilt"), ("Lệch thân, ảnh sau lưng (độ)", "trunk_shift"),
-            ("Nghiêng thân khi đứng (độ)", "trunk_lean_stand"), ("Nghiêng thân khi ngồi (độ)", "trunk_lean_sit"),
-            ("Tăng lệch vai khi đeo cặp (độ)", "delta_tilt"), ("Tăng nghiêng thân khi đeo cặp (độ)", "delta_trunk"),
-            ("Giảm góc tai–vai khi đeo cặp (độ)", "delta_ear_drop"), ("Cặp / cân nặng (%)", "bag_ratio_pct")]
-    md = "| Chỉ số | Xanh khi nhỏ hơn | Vàng khi ≤ (lớn hơn là đỏ) |\n|---|---|---|\n"
-    md += "\n".join(f"| {n} | {TH[k][0]:g} | {TH[k][1]:g} |" for n, k in rows)
-    md += f"\n| Góc tai–vai (độ) | ≥ {EAR_OK:g} xanh | ≥ {EAR_WATCH:g} vàng, nhỏ hơn là đỏ |"
-    st.markdown("**Ngưỡng phân loại: ngưỡng tham khảo của nhóm, chưa có nguồn chuẩn và chưa được kiểm chứng lâm sàng.** Cần đối chiếu với đo thủ công để hiệu chỉnh.")
-    st.markdown(md)
-    st.markdown(
-        "**Giới hạn.**\n"
-        "- Ảnh 2D không thay thế X-quang hay khám lâm sàng, không chẩn đoán vẹo/gù cột sống. Hai chỉ số ở ảnh nghiêng (đầu nhô ra trước, nghiêng thân) **không phải là đo độ gù**. Vẹo cột sống là biến dạng 3D "
-        "có xoay đốt sống; nghiệm pháp cúi người (Adams) với scoliometer mới đánh giá được góc xoay thân.\n"
-        "- Mốc do mô hình ước lượng; áo rộng, tóc che vai, ảnh tối/mờ vẫn có thể làm lệch mốc. App chỉ cảnh báo được một phần.\n"
-        "- Việc bù máy nghiêng chỉ làm được khi nền có đủ đường thẳng đứng; nếu không, hãy đặt máy cố định, ngang bằng.\n"
-        "- Mỗi ảnh chỉ ghi lại một khoảnh khắc, chưa cho biết đó có phải thói quen lâu dài hay không.\n"
-        "- App không ghi ảnh ra đĩa hay cơ sở dữ liệu; ảnh chỉ được xử lý tạm trong bộ nhớ."
-    )
+    st.markdown(_one_line(f"""
+    <section class="ss-ky">
+      <div>{spine_svg("ky")}</div>
+      <div>
+        <div class="ss-st" role="heading" aria-level="2">Đo gù lưng: dán 6 nhãn dọc cột sống</div>
+        <p>Dán nhãn màu nhỏ lên mỏm gai T2, T4, T6, T8, T10, T12, chụp nghiêng 90°, rồi chạm lần lượt vào từng nhãn trên ảnh. App dựng đường cong qua 6 điểm và tính góc giữa hai tiếp tuyến ở T2 và T12.</p>
+        <p>Mặc áo ba lỗ hở lưng ôm sát để dán trực tiếp lên da, không cần cởi áo. Cách tìm từng vị trí có trong mục 5.</p>
+        <div class="ss-note">Đây là góc gù ước tính từ ảnh, không phải góc Cobb và chưa thay thế X-quang.</div>
+      </div>
+    </section>"""), unsafe_allow_html=True)
+
+    st.markdown(_one_line("""
+    <section class="ss-sec">
+      <div class="ss-st" role="heading" aria-level="2">5 mục kiểm tra</div>
+      <ul class="ss-modes">
+        <li><b>1. Đứng tĩnh</b>Lệch vai, khom, đầu nhô ra trước</li>
+        <li><b>2. Đeo cặp sách</b>Tư thế khi đeo cặp và tỷ lệ cặp/cân nặng</li>
+        <li><b>3. Ngồi học</b>Tư thế khi ngồi</li>
+        <li><b>4. Trước &amp; sau đeo cặp</b>So sánh hai ảnh của cùng một em</li>
+        <li><b>5. Gù lưng</b>Góc gù ước tính từ 6 nhãn</li>
+      </ul>
+    </section>"""), unsafe_allow_html=True)
 
 
 def main():
     logo = load_logo()
     st.set_page_config(page_title="S-Spine | AI đánh giá và phân tích tư thế học đường",
                        page_icon=logo if logo is not None else "🛡️", layout="wide")
-    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown(CSS_HOME, unsafe_allow_html=True)
 
     if get_pose() is None:
         st.error("Không khởi tạo được MediaPipe Pose. Hãy ghim phiên bản có `mp.solutions` trong requirements.txt "
                  "(ví dụ `mediapipe==0.10.14`) rồi triển khai lại.")
         st.stop()
 
-    c1, c2 = st.columns([0.08, 0.92])
-    with c1:
-        if logo is not None:
-            st.image(logo, width=65)
-        else:
-            st.markdown("<h1>🛡️</h1>", unsafe_allow_html=True)
-    with c2:
-        st.markdown('<h1 class="main-title" style="margin-top: 5px;">S-Spine</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">AI đánh giá và phân tích tư thế học đường</p>', unsafe_allow_html=True)
+    st.markdown(header_html(logo), unsafe_allow_html=True)
 
     t_guide, t_app, t_method = st.tabs(["Hướng dẫn chụp ảnh chuẩn", "Đánh giá & phân tích tư thế",
                                          "Phương pháp & giới hạn"])
