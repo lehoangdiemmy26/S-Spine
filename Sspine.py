@@ -772,34 +772,132 @@ def mode_sitting(auto_roll):
 # ---------------------------------------------------------
 # Gù lưng (ước tính từ ảnh có nhãn đánh dấu, người dùng chạm chọn điểm)
 # ---------------------------------------------------------
-KY_LABELS = ["C7 (đốt sống cổ 7, chỗ nhô ở gốc cổ)", "Điểm trên lưng (khoảng T4-T5)",
-             "Điểm giữa lưng (khoảng T8)", "T12 (ngang đáy xương bả vai/cuối lồng ngực)"]
+# Bộ mốc lấy theo giao thức DIPA (C7, T2, T4, T6, T8, T10, T12, L2, L4, S2): ở đây dùng 6 mốc T2 -> T12
+KY_LABELS = ["T2 (đếm xuống 2 mỏm gai dưới C7; C7 là mỏm nhô rõ nhất ở gốc cổ)", "T4", "T6", "T8", "T10",
+             "T12 (cuối lồng ngực, ngang đáy xương bả vai là mốc tham khảo)"]
+KY_N = len(KY_LABELS)
 KY_DISPLAY_W = 560
 
 
 def kyphosis_angle(pts):
-    """pts: 4 điểm (x, y) theo thứ tự từ C7 xuống T12 (ảnh nghiêng).
-    Dựng đường cong x = f(y) bậc 2 qua các điểm, lấy tiếp tuyến ở C7 và T12, trả về góc giữa hai tiếp tuyến (độ)."""
+    """pts: KY_N điểm (x, y) theo thứ tự từ T2 xuống T12 (ảnh nghiêng).
+    Dựng đường cong x = f(y) bậc 3 (bình phương tối thiểu) qua các điểm, lấy tiếp tuyến ở T2 và T12,
+    trả về góc giữa hai tiếp tuyến (độ). Đây là CÁCH LÀM CỦA NHÓM theo tinh thần DIPA (tiếp tuyến tại T2, T12);
+    công thức lượng giác chính xác của DIPA chưa được đối chiếu với toàn văn bài báo."""
     ys = np.array([p[1] for p in pts], dtype=float)
     xs = np.array([p[0] for p in pts], dtype=float)
     if not np.all(np.diff(ys) > 0):
         return None
-    c = np.polyfit(ys, xs, 2)
+    c = np.polyfit(ys, xs, 3)
     d = np.polyder(c)
     a_top = math.degrees(math.atan(np.polyval(d, ys[0])))
     a_bot = math.degrees(math.atan(np.polyval(d, ys[-1])))
     return abs(a_top - a_bot)
 
 
+def ky_stats(app, ref):
+    """So sánh góc của app với số đo đối chiếu (thước dẻo/kyphometer)."""
+    app, ref = np.asarray(app, float), np.asarray(ref, float)
+    n = len(app)
+    diff = app - ref
+    out = {"n": n, "bias": float(diff.mean()), "rmse": float(np.sqrt((diff ** 2).mean())),
+           "loa_lo": float(diff.mean() - 1.96 * diff.std(ddof=1)), "loa_hi": float(diff.mean() + 1.96 * diff.std(ddof=1))}
+    out["r"] = float(np.corrcoef(app, ref)[0, 1])
+    a, b = np.polyfit(app, ref, 1)          # số đối chiếu ≈ a * số app + b
+    out["a"], out["b"] = float(a), float(b)
+    out["rmse_cal"] = float(np.sqrt(((a * app + b - ref) ** 2).mean()))
+    loo = []                                 # kiểm tra chéo bỏ-một để tránh tự đánh giá quá lạc quan
+    for k in range(n):
+        m = np.arange(n) != k
+        aa, bb = np.polyfit(app[m], ref[m], 1)
+        loo.append(aa * app[k] + bb - ref[k])
+    out["rmse_loo"] = float(np.sqrt((np.array(loo) ** 2).mean()))
+    return out
+
+
+def _ky_calibration():
+    import pandas as pd
+    st.subheader("Đối chiếu với số đo thủ công & hiệu chỉnh")
+    st.caption("Nhập số đo bằng thước dẻo/kyphometer do người có chuyên môn đo. Số đối chiếu này cũng có sai số, "
+               "nên đây là đối chiếu giữa hai phương pháp không phóng xạ, không phải với góc Cobb.")
+    rows = st.session_state.setdefault("ky_rows", [])
+    up = st.file_uploader("Hoặc tải lên CSV đã lưu (cột: ma_hs, goc_app, goc_thu_cong)", type=["csv"], key="ky_csv")
+    df = pd.DataFrame(rows, columns=["ma_hs", "goc_app", "goc_thu_cong"])
+    if up is not None:
+        try:
+            extra = pd.read_csv(up)[["ma_hs", "goc_app", "goc_thu_cong"]]
+            df = pd.concat([extra, df], ignore_index=True)
+        except Exception:
+            st.error("CSV phải có đủ 3 cột: ma_hs, goc_app, goc_thu_cong.")
+    if df.empty:
+        st.info("Chưa có dữ liệu đối chiếu.")
+        return
+    st.dataframe(df, use_container_width=True)
+    st.download_button("⬇️ Tải CSV dữ liệu đối chiếu", df.to_csv(index=False).encode("utf-8-sig"),
+                       "doi_chieu_gu_lung.csv", "text/csv")
+    d = df.dropna()
+    if len(d) < 5:
+        st.warning("Cần ít nhất 5 học sinh để tính thống kê (nên 20–30).")
+        return
+    r = ky_stats(d["goc_app"], d["goc_thu_cong"])
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Số học sinh (n)", r["n"])
+    c2.metric("Tương quan r", f"{r['r']:.2f}")
+    c3.metric("Sai số RMSE", f"{r['rmse']:.1f}°")
+    st.write(f"- Độ chênh trung bình (app − thủ công): **{r['bias']:+.1f}°**; khoảng đồng thuận 95% (Bland–Altman): "
+             f"**{r['loa_lo']:+.1f}° đến {r['loa_hi']:+.1f}°**")
+    st.write(f"- Hồi quy: số đối chiếu ≈ **{r['a']:.2f} × số app + {r['b']:+.1f}**")
+    st.write(f"- RMSE sau hiệu chỉnh: {r['rmse_cal']:.1f}° (trên chính dữ liệu này); kiểm tra chéo bỏ-một: **{r['rmse_loo']:.1f}°**")
+    if r["n"] < 20:
+        st.warning("n < 20: hệ số hồi quy chưa đáng tin. Chỉ nên dùng để tham khảo.")
+    if r["rmse_loo"] >= r["rmse"]:
+        st.info("Hiệu chỉnh không giảm sai số khi kiểm tra chéo, nên không nên áp dụng hệ số này.")
+    elif st.button("Áp dụng hệ số hiệu chỉnh này cho mục đo gù"):
+        st.session_state["ky_cal"] = (r["a"], r["b"])
+        st.success("Đã áp dụng. Kết quả đo sẽ hiện thêm dòng góc đã hiệu chỉnh.")
+    if st.session_state.get("ky_cal") and st.button("Bỏ hiệu chỉnh"):
+        st.session_state.pop("ky_cal")
+        st.rerun()
+
+
 def mode_kyphosis():
     st.subheader("5. Gù lưng (ước tính từ ảnh)")
+    with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
+        st.markdown(KY_GUIDE)
+    _ky_measure()
+    st.divider()
+    _ky_calibration()
+
+
+KY_GUIDE = """
+**Chuẩn bị**
+- 6 nhãn tròn nhỏ (đường kính khoảng 1–1,5 cm), màu tương phản với da/áo (vàng chanh, cam). Nên dùng màu khác cho **T2 và T12** (hai điểm cuối dùng tính tiếp tuyến).
+- Bút viết da hoặc bút kẻ mắt, thước dây.
+- Trang phục: **áo ba lỗ/áo thể thao hở lưng ôm sát** (dán lên da, chính xác nhất) hoặc **áo thun mỏng ôm sát, không nhăn** (kín đáo hơn nhưng kém chính xác hơn). Không bắt học sinh cởi áo.
+- Người dán cùng giới tính với học sinh, đo nơi kín đáo, có người lớn có mặt, đã được phụ huynh/nhà trường đồng ý. Học sinh có quyền từ chối.
+- Nên để **một người cố định** dán nhãn cho cả đợt đo, và không trộn nhóm dán trên da với nhóm dán trên áo khi tính sai số.
+
+**Các bước**
+1. **Tìm C7:** cho học sinh cúi đầu hết mức, sờ giữa gáy từ trên xuống. Mỏm gai nhô rõ nhất ở gốc cổ thường là C7 (nếu thấy hai mỏm nhô, thường mỏm trên là C7).
+2. **Tìm T2:** từ C7 đếm xuống hai mỏm gai (mỏm 1 = T1, mỏm 2 = T2). Đánh dấu bằng bút.
+3. **Tìm T12:** đếm xuống từ T2 thêm 10 mỏm gai. Đối chiếu: đường nối hai mào chậu thường ngang L4, đếm lên 4 mỏm (L3, L2, L1, T12). Nếu hai cách lệch quá 1 mỏm, sờ lại. Đánh dấu bằng bút.
+4. **Chia đều T4, T6, T8, T10:** đo khoảng cách dọc cột sống từ T2 đến T12 = L. Đánh dấu cách T2 lần lượt **20% L (T4), 40% L (T6), 60% L (T8), 80% L (T10)**. Đối chiếu: góc dưới xương bả vai (tay buông) thường ngang T7, tức nằm giữa T6 và T8.
+5. **Dán nhãn:** dán tâm nhãn đúng lên điểm đánh dấu, ép phẳng. Cả 6 nhãn cùng kích thước, nằm trên đường giữa lưng. Cho học sinh đứng thẳng lại, kiểm tra các nhãn xếp thành một đường tương đối dọc; nhãn nào lệch hẳn thì dán lại.
+6. **Chụp ảnh:** học sinh đứng **nghiêng 90°**, bên có nhãn quay vào máy, mắt nhìn thẳng, tay buông hoặc khoanh nhẹ trước ngực. Máy cố định, ngang bằng, ngang tầm giữa lưng. Không nhún vai hay ưỡn ngực quá mức.
+7. **Trong app:** chạm lần lượt từ trên xuống **T2 → T4 → T6 → T8 → T10 → T12**. Chạm sai thì dùng nút "Bỏ điểm vừa chọn".
+
+**Lưu ý sai số:** xác định mỏm gai bằng cách sờ thường lệch khoảng một đốt. Nên nhờ người thứ hai dán lại ở một vài học sinh để ước lượng độ lặp lại giữa hai người đo.
+"""
+
+
+def _ky_measure():
     try:
         from streamlit_image_coordinates import streamlit_image_coordinates
     except Exception:
         st.error("Thiếu thư viện chạm chọn điểm. Hãy thêm `streamlit-image-coordinates` vào requirements.txt rồi triển khai lại.")
         return
-    st.info("**Cách làm:** dán 4 nhãn màu nhỏ lên lưng (C7, hai điểm giữa lưng, T12), chụp ảnh nghiêng 90° rồi chạm lần lượt vào từng nhãn "
-            "theo thứ tự từ trên xuống. Kết quả là **góc gù ước tính từ ảnh**, không phải góc Cobb và không thay thế X-quang.")
+    st.info("**Cách làm:** dán 6 nhãn màu nhỏ lên mỏm gai (T2, T4, T6, T8, T10, T12; xác định bằng cách sờ và đếm từ C7), chụp ảnh nghiêng 90° rồi chạm lần lượt vào từng nhãn "
+            "theo thứ tự từ trên xuống (đường cong bậc 3 qua 6 điểm, tiếp tuyến tại T2 và T12). Kết quả là **góc gù ước tính từ ảnh**, không phải góc Cobb và không thay thế X-quang.")
     src = source_selector("m5")
     extra = clothing_check("m5")
     files = image_inputs("Ảnh nghiêng có nhãn đánh dấu trên lưng:", "m5_side", src, multiple=False)
@@ -818,10 +916,10 @@ def mode_kyphosis():
         c = (int(x / scale), int(y / scale))
         cv2.circle(disp, c, 6, (255, 0, 0), -1)
         put_text(disp, str(i + 1), (c[0] + 8, c[1] - 6), 0.6, (255, 255, 0))
-    if len(pts) < 4:
-        st.markdown(f"**Chạm vào: {len(pts) + 1}/4 - {KY_LABELS[len(pts)]}**")
+    if len(pts) < KY_N:
+        st.markdown(f"**Chạm vào: {len(pts) + 1}/{KY_N} - {KY_LABELS[len(pts)]}**")
     val = streamlit_image_coordinates(Image.fromarray(disp), key=f"ky_img_{sig}_{len(pts)}")
-    if val and len(pts) < 4:
+    if val and len(pts) < KY_N:
         key = (val["x"], val["y"], len(pts))
         if st.session_state.get("ky_last") != key:
             st.session_state["ky_last"] = key
@@ -836,16 +934,25 @@ def mode_kyphosis():
     if c2.button("🗑️ Chọn lại từ đầu", disabled=not pts):
         st.session_state.update(ky_pts=[], ky_last=None)
         st.rerun()
-    if len(pts) < 4:
+    if len(pts) < KY_N:
         return
     ang = kyphosis_angle(pts)
     if ang is None:
-        st.error("Thứ tự điểm chưa đúng (phải đi từ C7 xuống T12, từ trên xuống dưới). Hãy chọn lại.")
+        st.error("Thứ tự điểm chưa đúng (phải đi từ T2 xuống T12, từ trên xuống dưới). Hãy chọn lại.")
         return
     st.metric("Góc gù ước tính từ ảnh", f"{ang:.0f}°",
-              help="Góc giữa hai tiếp tuyến của đường cong qua 4 nhãn, tại C7 và T12. Không phải góc Cobb.")
+              help="Góc giữa hai tiếp tuyến của đường cong qua 6 nhãn, tại T2 và T12. Không phải góc Cobb.")
+    cal = st.session_state.get("ky_cal")
+    if cal:
+        st.metric("Góc gù đã hiệu chỉnh (theo dữ liệu đối chiếu của nhóm)", f"{cal[0] * ang + cal[1]:.0f}°")
+    with st.form("ky_log", clear_on_submit=True):
+        ma = st.text_input("Mã học sinh (ẩn danh, ví dụ HS01)")
+        ref = st.number_input("Số đo đối chiếu (thước dẻo/kyphometer, độ) - nếu có", 0.0, 120.0, 0.0, 0.5)
+        if st.form_submit_button("Lưu vào bảng đối chiếu") and ma and ref > 0:
+            st.session_state.setdefault("ky_rows", []).append({"ma_hs": ma, "goc_app": round(ang, 1), "goc_thu_cong": ref})
+            st.success("Đã lưu. Kéo xuống phần Đối chiếu để xem thống kê.")
     st.warning("Chưa có ngưỡng chuẩn cho lứa tuổi học sinh nên app **không phân mức** bình thường/bất thường. "
-               "Phương pháp ảnh có sai số so với X-quang (nghiên cứu DIPA ở người lớn: ±4°). "
+               "Phương pháp ảnh có sai số so với X-quang (nghiên cứu DIPA ở người lớn: ±4°, nhưng bản này của nhóm chưa kiểm chứng). "
                "Nếu con số lớn hoặc có lo ngại, hãy đến cơ sở y tế chuyên khoa để được khám.")
     if extra:
         st.caption("• " + extra[0])
