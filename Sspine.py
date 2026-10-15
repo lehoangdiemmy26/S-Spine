@@ -1245,9 +1245,8 @@ def eyebrow(text):
     st.markdown(f'<div class="ss-eyebrow">{text}</div>', unsafe_allow_html=True)
 
 
-def page_head(title, desc=""):
-    d = f'<div class="d">{desc}</div>' if desc else ""
-    st.markdown(_one_line(f'<div class="ss-head"><div class="t">{title}</div>{d}</div>'),
+def page_head(title, desc):
+    st.markdown(_one_line(f'<div class="ss-head"><div class="t">{title}</div><div class="d">{desc}</div></div>'),
                 unsafe_allow_html=True)
 
 
@@ -1303,9 +1302,8 @@ def tab_guide():
     </section>"""), unsafe_allow_html=True)
 
 
-def tap_method():
-    page_head("Phương pháp & giới hạn")
-
+def tab_method():
+    page_head("Phương pháp & giới hạn", "App đo gì, đo bằng cách nào và nên hiểu kết quả đến đâu.")
     eyebrow("Cách đo")
     st.markdown(_one_line("""
     <div class="ss-box">Mô hình MediaPipe Pose tìm các mốc tai, vai, hông trên ảnh. Mốc do mô hình ước lượng,
