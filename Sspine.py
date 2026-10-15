@@ -28,7 +28,10 @@ LEVEL_EPS = 0.3        # dưới góc này coi như cân bằng
 
 ROLL_MIN_FIX = 0.5     # máy nghiêng từ 0.5° mới bù
 ROLL_MAX_FIX = 8.0     # nghiêng quá 8° thì không tự bù, yêu cầu chụp lại hoặc nhập tay góc nghiêng
-SYM_WARN = 0.15        # mốc vai lệch đối xứng so với viền cơ thể quá 15% bề rộng vai
+SYM_WARN = 0.15        # mốc vai lệch đối xứng so với viền cơ thể quá 15% bề rộng vai -> chỉ cảnh báo
+SYM_BLOCK = 0.30       # quá 30% -> ảnh không đạt chuẩn, yêu cầu chụp lại
+DARK_MIN = 75          # độ sáng trung bình (vùng có người) thấp hơn mức này -> ảnh tối
+BLUR_P99_MIN = 20.0    # phân vị 99 của |Laplacian| (vùng có người, cao 640 px) thấp hơn -> ảnh mờ. CẦN HIỆU CHỈNH bằng ảnh thật
 PERSON_MIN_FRAC = 0.30
 ROT_WARN_FRONT = 0.60  # rộng vai / dài thân nhỏ hơn mức này -> người bị xoay
 ROT_WARN_SIDE = 0.35   # ảnh nghiêng: hai vai cách nhau quá mức này -> chưa nghiêng 90°
@@ -49,7 +52,7 @@ TH = {
     "delta_ear_drop": (5.0, 10.0),
     "bag_ratio_pct": (10.0, 15.0),
 }
-EAR_OK, EAR_WATCH = 50.0, 40.0   # góc tai-vai (gần giống CVA): >=50 xanh, 40-50 vàng, <40 đỏ
+EAR_OK, EAR_WATCH = 50.0, 40.0   # góc tai-vai: ngưỡng THAM KHẢO của nhóm (mượn từ CVA nhưng KHÔNG tương đương CVA chuẩn vì dùng mốc vai thay C7)
 
 # chỉ số mốc của MediaPipe Pose
 NOSE, L_EAR, R_EAR = 0, 7, 8
@@ -179,15 +182,37 @@ def check_points(lms, idxs):
     return out
 
 
+def person_roi(img, lms, margin=0.06):
+    """Hộp bao quanh người (theo các mốc nhìn thấy); nếu không đủ mốc thì lấy cả ảnh."""
+    h, w = img.shape[:2]
+    pts = [(p.x, p.y) for p in lms if p.visibility >= 0.5 and 0.0 <= p.x <= 1.0 and 0.0 <= p.y <= 1.0]
+    if len(pts) < 4:
+        return img
+    xs, ys = zip(*pts)
+    x0, x1 = int(max(0, min(xs) - margin) * w), int(min(1, max(xs) + margin) * w)
+    y0, y1 = int(max(0, min(ys) - margin) * h), int(min(1, max(ys) + margin) * h)
+    if x1 - x0 < 40 or y1 - y0 < 40:
+        return img
+    return img[y0:y1, x0:x1]
+
+
+def sharpness_p99(gray):
+    """Độ nét: phân vị 99 của |Laplacian| sau khi đưa vùng ảnh về cao 640 px.
+    Ảnh nét có vài đường viền rõ nên giá trị cao, kể cả khi nền và áo trơn; ảnh mờ thì thấp."""
+    h, w = gray.shape
+    k = 640.0 / h
+    g = cv2.resize(gray, (max(1, int(w * k)), 640), interpolation=cv2.INTER_AREA)
+    return float(np.percentile(np.abs(cv2.Laplacian(g, cv2.CV_64F)), 99))
+
+
 def image_notes(img, lms):
     notes = []
     h, w = img.shape[:2]
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    if gray.mean() < 75:
-        notes.append("Ảnh khá tối")
-    small = cv2.resize(gray, (640, max(1, int(640 * h / w)))) if w != 640 else gray
-    if cv2.Laplacian(small, cv2.CV_64F).var() < 40:
-        notes.append("Ảnh bị mờ hoặc nhiễu")
+    roi = cv2.cvtColor(person_roi(img, lms), cv2.COLOR_RGB2GRAY)
+    if roi.mean() < DARK_MIN:
+        notes.append("Ảnh khá tối (vùng có người), hãy chụp nơi đủ sáng")
+    if sharpness_p99(roi) < BLUR_P99_MIN:
+        notes.append("Ảnh bị mờ hoặc nhiễu, hãy giữ máy cố định và lấy nét vào người")
     if min(h, w) < 480:
         notes.append("Độ phân giải thấp (nên từ 480 px)")
     ys = [p.y for p in lms if p.visibility >= 0.5 and 0.0 <= p.y <= 1.0]
@@ -262,7 +287,7 @@ def classify_side(ear_ang, trunk, posture):
     l1, l2 = ear_level(ear_ang), level_of(max(0.0, trunk), th)
     why = []
     if l1 > 0:
-        why.append(f"đầu nhô ra trước (góc tai-vai ≈ {ear_ang:.0f}°, bình thường ≥ {EAR_OK:.0f}°)")
+        why.append(f"đầu nhô ra trước (góc tai-vai ≈ {ear_ang:.0f}°, ngưỡng tham khảo ≥ {EAR_OK:.0f}°)")
     if l2 > 0:
         why.append(f"thân nghiêng ra trước ≈ {trunk:.0f}°")
     return max(l1, l2), (cap("; ".join(why)) + "." if why else "Các chỉ số nằm trong ngưỡng tham khảo.")
@@ -322,8 +347,10 @@ def analyze_front(lms, img, view, mask=None):
                 notes.append("Người có vẻ bị xoay so với camera (vai nhìn hẹp)")
 
     asym = silhouette_asymmetry(mask, a, b)
-    if asym is not None and asym > SYM_WARN:
-        notes.append("Mốc vai không đối xứng với viền cơ thể (áo rộng, tóc che vai hoặc người xoay)")
+    if asym is not None and asym > SYM_BLOCK:
+        notes.append("Mốc vai không đối xứng với viền cơ thể (áo rộng, tóc che vai hoặc người xoay), hãy chụp lại")
+    elif asym is not None and asym > SYM_WARN:
+        notes.append("Mốc vai hơi lệch so với viền cơ thể (áo rộng hoặc tóc che vai), kết quả kém chắc chắn")
 
     level, summary = classify_front(abs(signed), lower, trunk)
 
@@ -536,7 +563,7 @@ def view_selector(key):
 
 
 def clothing_check(key):
-    ok = st.checkbox("Xác nhận:đã mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
+    ok = st.checkbox("Xác nhận: em mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
     return [] if ok else ["Chưa xác nhận áo ôm sát / tóc không che vai / máy cố định"]
 
 
@@ -796,6 +823,59 @@ def kyphosis_angle(pts):
     return abs(a_top - a_bot)
 
 
+def kyphosis_stability(pts):
+    """Kiểm tra độ nhạy với từng điểm chạm: bỏ lần lượt từng điểm giữa (T4, T6, T8, T10), tính lại góc,
+    trả về mức dao động (max - min, độ). Một điểm chạm lệch sẽ làm góc thay đổi nhiều khi bị bỏ đi."""
+    angs = []
+    for k in range(1, len(pts) - 1):
+        a = kyphosis_angle([p for i, p in enumerate(pts) if i != k])
+        if a is not None:
+            angs.append(a)
+    return (max(angs) - min(angs)) if angs else 0.0
+
+
+def side_photo_note(img):
+    """Ảnh gù lưng phải là ảnh nghiêng 90°: nếu thấy hai vai cách xa nhau thì cảnh báo. Không nhận diện được thì bỏ qua."""
+    try:
+        lms, _ = detect(img)
+    except Exception:
+        return None
+    if lms is None:
+        return None
+    h, w = img.shape[:2]
+    a, b, c, d = lms[L_SH], lms[R_SH], lms[L_HIP], lms[R_HIP]
+    if min(a.visibility, b.visibility, c.visibility, d.visibility) < VIS_MIN:
+        return None
+    ms = ((a.x + b.x) / 2.0 * w, (a.y + b.y) / 2.0 * h)
+    mh = ((c.x + d.x) / 2.0 * w, (c.y + d.y) / 2.0 * h)
+    torso = math.hypot(ms[0] - mh[0], ms[1] - mh[1])
+    if torso > 1 and abs(a.x - b.x) * w / torso > ROT_WARN_SIDE:
+        return "Ảnh có vẻ chưa chụp nghiêng 90° (hai vai còn cách xa nhau). Góc gù có thể bị lệch, nên chụp lại."
+    return None
+
+
+KY_STAB_MAX = 12.0  # dao động góc (độ) khi bỏ từng điểm giữa; vượt mức này -> kết quả chưa ổn định (cần hiệu chỉnh bằng dữ liệu thật)
+
+
+def ky_quality_notes(pts, img, ang):
+    notes = []
+    p = np.array(pts, dtype=float)
+    seg = np.hypot(np.diff(p[:, 0]), np.diff(p[:, 1]))
+    if seg.min() < 1 or seg.max() / seg.min() > 2.0:
+        notes.append("Khoảng cách giữa các nhãn không đều (các nhãn dán cách đều nhau). Hãy kiểm tra đã chạm đúng tâm từng nhãn chưa.")
+    dx, dy = p[-1, 0] - p[0, 0], p[-1, 1] - p[0, 1]
+    if abs(math.degrees(math.atan2(dx, dy))) > 30:
+        notes.append("Đường nối T2 → T12 nghiêng nhiều so với phương thẳng đứng: người đứng nghiêng hoặc ảnh bị xoay.")
+    spread = kyphosis_stability(pts)
+    if spread > KY_STAB_MAX:
+        notes.append(f"Góc thay đổi tới {spread:.0f}° khi bỏ lần lượt từng nhãn giữa, nghĩa là có điểm chạm lệch. "
+                     "Hãy chạm lại các nhãn cho đúng tâm.")
+    n = side_photo_note(img)
+    if n:
+        notes.append(n)
+    return notes, spread
+
+
 def mode_kyphosis():
     st.subheader("1.3 Gù lưng (ước tính từ ảnh)")
     with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
@@ -874,8 +954,14 @@ def _ky_measure():
     if ang is None:
         st.error("Thứ tự điểm chưa đúng (phải đi từ T2 xuống T12, từ trên xuống dưới). Hãy chọn lại.")
         return
+    qnotes, spread = ky_quality_notes(pts, img, ang)
     st.metric("Góc gù ước tính từ ảnh", f"{ang:.0f}°",
               help="Góc giữa hai tiếp tuyến của đường cong qua 6 nhãn, tại T2 và T12. Không phải góc Cobb.")
+    st.caption(f"Độ ổn định: góc dao động {spread:.0f}° khi bỏ lần lượt từng nhãn giữa (càng nhỏ càng đáng tin).")
+    if qnotes:
+        st.error("**Độ tin cậy thấp, nên chụp hoặc chạm lại:**\n\n" + "\n".join(f"- {n}" for n in qnotes))
+    else:
+        st.success("Các kiểm tra chất lượng đều đạt (nhãn cách đều, người đứng thẳng, góc ổn định khi bỏ từng nhãn).")
     st.warning("Chưa có ngưỡng chuẩn cho lứa tuổi học sinh nên app **không phân mức** bình thường/bất thường. "
                "Phương pháp ảnh có sai số so với X-quang (nghiên cứu DIPA ở người lớn: ±4°, nhưng bản này của nhóm chưa kiểm chứng). "
                "Nếu con số lớn hoặc có lo ngại, hãy đến cơ sở y tế chuyên khoa để được khám.")
@@ -1186,7 +1272,7 @@ def tab_method():
             ("Giảm góc tai–vai khi đeo cặp (độ)", "delta_ear_drop"), ("Cặp / cân nặng (%)", "bag_ratio_pct")]
     md = "| Chỉ số | Xanh khi nhỏ hơn | Vàng khi ≤ (lớn hơn là đỏ) |\n|---|---|---|\n"
     md += "\n".join(f"| {n} | {TH[k][0]:g} | {TH[k][1]:g} |" for n, k in rows)
-    md += f"\n| Góc tai–vai (độ) | ≥ {EAR_OK:g} xanh | ≥ {EAR_WATCH:g} vàng, nhỏ hơn là đỏ |"
+    md += f"\n| Góc tai–vai (độ; ngưỡng nhóm, không phải CVA chuẩn) | ≥ {EAR_OK:g} xanh | ≥ {EAR_WATCH:g} vàng, nhỏ hơn là đỏ |"
     st.markdown("**Ngưỡng phân loại: ngưỡng tham khảo của nhóm, chưa có nguồn chuẩn và chưa được kiểm chứng lâm sàng.** Cần đối chiếu với đo thủ công để hiệu chỉnh.")
     st.markdown(md)
     st.markdown(
