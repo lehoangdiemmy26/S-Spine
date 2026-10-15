@@ -467,7 +467,7 @@ def analyze_cached(kind, data, view, posture, auto_roll):
         res.notes.append(f"Máy có vẻ nghiêng ≈ {roll:.1f}° nhưng không bù được. Hãy đặt máy ngang bằng hoặc nhập tay góc nghiêng máy")
     blocked = [n for n in res.notes if n.startswith(BLOCKING)]
     if blocked:
-        return None, blocked + ["👉 Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
+        return None, blocked + [" Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
     if fixed:
         res.info.append(f"Đã bù máy nghiêng ≈ {roll:+.1f}° ({'nhập tay' if manual else 'ước lượng từ các đường thẳng đứng trong nền'}).")
     elif roll is None:
@@ -563,7 +563,7 @@ def view_selector(key):
 
 
 def clothing_check(key):
-    ok = st.checkbox("Xác nhận: em mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
+    ok = st.checkbox("Xác nhận: đã mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
     return [] if ok else ["Chưa xác nhận áo ôm sát / tóc không che vai / máy cố định"]
 
 
@@ -615,7 +615,7 @@ def show_gallery(res, caption, gallery):
 
 
 def adams_hint():
-    st.info("🔎 Nếu nghi ngờ lệch vai hoặc vẹo cột sống, bước sàng lọc tiếp theo thường dùng là **nghiệm pháp cúi người "
+    st.info(" Nếu nghi ngờ lệch vai hoặc vẹo cột sống, bước sàng lọc tiếp theo thường dùng là **nghiệm pháp cúi người "
             "(Adams)** do nhân viên y tế thực hiện, đo góc xoay thân bằng scoliometer (thường chuyển khám khi khoảng "
             "5-7° trở lên). Ảnh 2D của ứng dụng không nhìn thấy độ xoay của đốt sống nên không thay thế được bước này.")
 
@@ -734,7 +734,7 @@ def mode_bag(auto_roll):
     st.info("Mục này chỉ cho biết tư thế KHI đeo cặp. Muốn biết cặp làm thay đổi tư thế bao nhiêu, hãy dùng mục 3 (So sánh trước & sau khi đeo cặp).")
     c1, c2 = st.columns(2)
     bag = c1.number_input("Trọng lượng cặp (kg) - do bạn nhập", 0.0, 30.0, 0.0, 0.5)
-    body = c2.number_input("Cân nặng của em (kg) - cần nhập để tính tỷ lệ cặp/cân nặng", 0.0, 150.0, 0.0, 1.0)
+    body = c2.number_input("Cân nặng của bạn (kg) - cần nhập để tính tỷ lệ cặp/cân nặng", 0.0, 150.0, 0.0, 1.0)
     if bag > 0 and body <= 0:
         st.warning("Chưa nhập cân nặng nên chưa tính được tỷ lệ cặp/cân nặng (chỉ số khuyến nghị ≤ 10-15%).")
     st.caption("Cặp có thể che mốc vai/hông. Nếu mốc trên ảnh kết quả đặt sai chỗ, hãy chụp lại.")
@@ -878,7 +878,7 @@ def ky_quality_notes(pts, img, ang):
 
 def mode_kyphosis():
     st.subheader("1.3 Gù lưng (ước tính từ ảnh)")
-    with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
+    with st.expander("Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
         st.markdown(KY_GUIDE)
     _ky_measure()
 
