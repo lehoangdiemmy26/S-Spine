@@ -467,7 +467,7 @@ def analyze_cached(kind, data, view, posture, auto_roll):
         res.notes.append(f"Máy có vẻ nghiêng ≈ {roll:.1f}° nhưng không bù được. Hãy đặt máy ngang bằng hoặc nhập tay góc nghiêng máy")
     blocked = [n for n in res.notes if n.startswith(BLOCKING)]
     if blocked:
-        return None, blocked + [" Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
+        return None, blocked + ["👉 Ảnh chưa đạt chuẩn, vui lòng CHỤP LẠI."]
     if fixed:
         res.info.append(f"Đã bù máy nghiêng ≈ {roll:+.1f}° ({'nhập tay' if manual else 'ước lượng từ các đường thẳng đứng trong nền'}).")
     elif roll is None:
@@ -563,7 +563,7 @@ def view_selector(key):
 
 
 def clothing_check(key):
-    ok = st.checkbox("Xác nhận: đã mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
+    ok = st.checkbox("Xác nhận: em mặc áo ôm sát, tóc không che vai, máy đặt cố định", key=f"cl_{key}")
     return [] if ok else ["Chưa xác nhận áo ôm sát / tóc không che vai / máy cố định"]
 
 
@@ -615,7 +615,7 @@ def show_gallery(res, caption, gallery):
 
 
 def adams_hint():
-    st.info(" Nếu nghi ngờ lệch vai hoặc vẹo cột sống, bước sàng lọc tiếp theo thường dùng là **nghiệm pháp cúi người "
+    st.info("🔎 Nếu nghi ngờ lệch vai hoặc vẹo cột sống, bước sàng lọc tiếp theo thường dùng là **nghiệm pháp cúi người "
             "(Adams)** do nhân viên y tế thực hiện, đo góc xoay thân bằng scoliometer (thường chuyển khám khi khoảng "
             "5-7° trở lên). Ảnh 2D của ứng dụng không nhìn thấy độ xoay của đốt sống nên không thay thế được bước này.")
 
@@ -657,6 +657,7 @@ def run_and_show(files, kind, view, posture, auto_roll, caption, key, extra=None
     if bad:
         st.warning("Một số ảnh bị bỏ qua:\n\n" + "\n".join(f"- {p}" for p in bad))
     gallery = [r.image for r in singles] if len(singles) > 1 else None
+    eyebrow("Kết quả phân tích")
     if kind == "front":
         render_front(res, caption, key, gallery, extra)
     else:
@@ -708,7 +709,7 @@ def show_recommendations(level):
 # Các mục chức năng
 # ---------------------------------------------------------
 def mode_standing(auto_roll):
-    st.subheader("1.1 Đứng tĩnh (lệch vai / khom, đầu nhô ra trước)")
+    page_head("Đứng tĩnh", "Kiểm tra lệch vai, tư thế khom và đầu nhô ra trước khi đứng.")
     sub = st.selectbox("Chọn góc chụp:", ["Sau lưng / Chính diện (kiểm tra lệch vai)",
                                           "Nghiêng bên hông (kiểm tra tư thế khom & đầu nhô ra trước)"])
     st.caption(f"Có thể tải tối đa {MAX_PHOTOS} ảnh của cùng một người (chụp rời nhau vài giây); app lấy trung vị để giảm sai số.")
@@ -730,11 +731,11 @@ def mode_standing(auto_roll):
 
 
 def mode_bag(auto_roll):
-    st.subheader("1.2 Đeo cặp sách")
-    st.info("Mục này chỉ cho biết tư thế KHI đeo cặp. Muốn biết cặp làm thay đổi tư thế bao nhiêu, hãy dùng mục 3 (So sánh trước & sau khi đeo cặp).")
+    page_head("Đeo cặp sách", "Xem tư thế khi đang đeo cặp và tỷ lệ cặp/cân nặng.")
+    st.info("Mục này chỉ cho biết tư thế KHI đeo cặp. Muốn biết cặp làm thay đổi tư thế bao nhiêu, hãy dùng mục “So sánh trước & sau khi đeo cặp”.")
     c1, c2 = st.columns(2)
     bag = c1.number_input("Trọng lượng cặp (kg) - do bạn nhập", 0.0, 30.0, 0.0, 0.5)
-    body = c2.number_input("Cân nặng của bạn (kg) - cần nhập để tính tỷ lệ cặp/cân nặng", 0.0, 150.0, 0.0, 1.0)
+    body = c2.number_input("Cân nặng của em (kg) - cần nhập để tính tỷ lệ cặp/cân nặng", 0.0, 150.0, 0.0, 1.0)
     if bag > 0 and body <= 0:
         st.warning("Chưa nhập cân nặng nên chưa tính được tỷ lệ cặp/cân nặng (chỉ số khuyến nghị ≤ 10-15%).")
     st.caption("Cặp có thể che mốc vai/hông. Nếu mốc trên ảnh kết quả đặt sai chỗ, hãy chụp lại.")
@@ -770,7 +771,7 @@ def mode_bag(auto_roll):
 
 
 def mode_sitting(auto_roll):
-    st.subheader("2. Tư thế ngồi học")
+    page_head("Tư thế ngồi học", "Kiểm tra tư thế khi ngồi học từ ảnh chụp.")
     st.info("Có thể dùng một hoặc cả hai góc chụp: sau lưng (lệch vai) và nghiêng bên hông (cúi đầu, khom, đầu nhô ra trước). "
             "Tư thế ngồi thay đổi liên tục, nên hãy chụp vài ảnh ở các thời điểm khác nhau.")
     src = source_selector("m3")
@@ -877,8 +878,8 @@ def ky_quality_notes(pts, img, ang):
 
 
 def mode_kyphosis():
-    st.subheader("1.3 Gù lưng (ước tính từ ảnh)")
-    with st.expander("Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
+    page_head("Gù lưng (ước tính từ ảnh)", "Dán 6 nhãn lên lưng, chụp nghiêng rồi chạm chọn từng nhãn trên ảnh.")
+    with st.expander("📌 Hướng dẫn dán 6 nhãn lên lưng (T2, T4, T6, T8, T10, T12)", expanded=False):
         st.markdown(KY_GUIDE)
     _ky_measure()
 
@@ -972,7 +973,7 @@ def _ky_measure():
 
 
 def mode_compare(auto_roll):
-    st.subheader("3. So sánh trước và sau khi đeo cặp")
+    page_head("So sánh trước & sau khi đeo cặp", "Hai ảnh của cùng một em để xem cặp làm tư thế thay đổi thế nào.")
     st.info("Chụp **cùng vị trí, cùng khoảng cách, cùng chiều cao máy** cho cả hai ảnh để so sánh đáng tin.")
     sub = st.selectbox("Chọn góc chụp so sánh:", ["Sau lưng / Chính diện (lệch vai)", "Nghiêng bên hông (tư thế khom, đầu nhô ra trước)"])
     src = source_selector("m4")
@@ -1057,7 +1058,7 @@ def load_logo():
 
 
 def _one_line(html):
-    return "".join(line.strip() for line in html.strip().splitlines())
+    return " ".join(line.strip() for line in html.strip().splitlines())
 
 
 def _curve(t):
@@ -1189,6 +1190,45 @@ CSS_HOME = """
 .exercise-title { color:#0369A1; font-weight:700; font-size:1.1rem; margin-bottom:8px; }
 .stApp { background-color:#FFFFFF; color:#1A202C; }
 
+
+/* ---- tiêu đề trang con, nhãn nhỏ ---- */
+.ss-eyebrow { font-family:'Be Vietnam Pro','Segoe UI',sans-serif; font-size:.78rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--blue); margin:26px 0 8px; }
+.ss-head { margin:6px 0 4px; font-family:'Be Vietnam Pro','Segoe UI',sans-serif; }
+.ss-head .t { font-size:1.55rem; font-weight:800; color:var(--navy); line-height:1.2; }
+.ss-head .d { color:var(--mute); margin-top:4px; font-size:.97rem; }
+
+/* ---- nút chọn dạng viên thuốc cho mọi st.radio (chỉ áp dụng khi trình duyệt hỗ trợ :has) ---- */
+@supports selector(:has(*)) {
+  div[role="radiogroup"] { gap:8px; flex-wrap:wrap; }
+  div[role="radiogroup"] > label { background:#fff; border:1px solid var(--line); border-radius:999px; padding:7px 16px; margin:0; cursor:pointer; transition:background .15s, border-color .15s; }
+  div[role="radiogroup"] > label > div:first-child { display:none; }
+  div[role="radiogroup"] > label:hover { border-color:var(--blue); }
+  div[role="radiogroup"] > label:has(input:checked) { background:var(--navy); border-color:var(--navy); }
+  div[role="radiogroup"] > label:has(input:checked) p { color:#fff !important; }
+  div[role="radiogroup"] > label p { font-weight:600; font-size:.93rem; }
+}
+
+/* ---- thẻ chỉ số, thông báo, nút ---- */
+[data-testid="stMetric"] { background:#F4F8FC; border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+[data-testid="stAlert"] { border-radius:12px; }
+[data-testid="stExpander"] { border:1px solid var(--line); border-radius:12px; }
+.stButton > button, .stDownloadButton > button { border-radius:999px; font-weight:600; }
+
+/* ---- tab Phương pháp & giới hạn ---- */
+.ss-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px; }
+.ss-card { border:1px solid var(--line); border-radius:14px; padding:18px; background:#fff; color:var(--ink); font-size:.92rem; line-height:1.6; }
+.ss-card b { display:block; color:var(--navy); font-size:1.02rem; margin-bottom:4px; }
+.ss-tag { display:inline-block; background:var(--sky); color:var(--blue); border-radius:999px; padding:2px 10px; font-size:.75rem; font-weight:600; margin-bottom:8px; }
+.ss-card.warn { background:#FFF8E6; border-color:#F3DDA0; grid-column:1 / -1; }
+.ss-table { width:100%; border-collapse:collapse; font-size:.92rem; color:var(--ink); }
+.ss-table th { text-align:left; color:var(--mute); font-weight:600; font-size:.8rem; padding:8px 12px; border-bottom:2px solid var(--line); }
+.ss-table td { padding:10px 12px; border-bottom:1px solid var(--line); }
+.ss-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
+.ss-limits { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+.ss-limits li { border-left:4px solid var(--amber); background:#FFFCF3; border-radius:0 10px 10px 0; padding:12px 16px; color:var(--ink); font-size:.93rem; line-height:1.6; }
+.ss-box { background:var(--sky); border-radius:14px; padding:14px 18px; color:var(--ink); font-size:.93rem; line-height:1.6; margin-bottom:14px; }
+.ss-table-wrap { overflow-x:auto; }
+
 @media (max-width: 860px) {
   .ss-hero { grid-template-columns:1fr; padding:30px 24px 20px; }
   .ss-hero .art { max-height:300px; }
@@ -1199,6 +1239,15 @@ CSS_HOME = """
 @media (max-width: 520px) { .ss-steps { grid-template-columns:1fr; } }
 </style>
 """
+
+
+def eyebrow(text):
+    st.markdown(f'<div class="ss-eyebrow">{text}</div>', unsafe_allow_html=True)
+
+
+def page_head(title, desc):
+    st.markdown(_one_line(f'<div class="ss-head"><div class="t">{title}</div><div class="d">{desc}</div></div>'),
+                unsafe_allow_html=True)
 
 
 def header_html(logo):
@@ -1237,7 +1286,7 @@ def tab_guide():
       <div>
         <div class="ss-st" role="heading" aria-level="2">Đo gù lưng: dán 6 nhãn dọc cột sống</div>
         <p>Dán nhãn màu nhỏ lên mỏm gai T2, T4, T6, T8, T10, T12, chụp nghiêng 90°, rồi chạm lần lượt vào từng nhãn trên ảnh. App dựng đường cong qua 6 điểm và tính góc giữa hai tiếp tuyến ở T2 và T12.</p>
-        <p>Mặc áo ba lỗ hở lưng ôm sát để dán trực tiếp lên da, không cần cởi áo. Cách tìm từng vị trí có trong mục 1 → Gù lưng.</p>
+        <p>Mặc áo ba lỗ hở lưng ôm sát để dán trực tiếp lên da, không cần cởi áo. Cách tìm từng vị trí có trong mục Tư thế đứng → Gù lưng.</p>
         <div class="ss-note">Đây là góc gù ước tính từ ảnh, không phải góc Cobb và chưa thay thế X-quang.</div>
       </div>
     </section>"""), unsafe_allow_html=True)
@@ -1254,36 +1303,57 @@ def tab_guide():
 
 
 def tab_method():
-    st.subheader("Phương pháp & giới hạn")
-    st.markdown(
-        "**Cách đo.** Mô hình MediaPipe Pose tìm các mốc vai, hông, tai. Mốc do mô hình ước lượng; mọi chỉ số là góc tính trên ảnh 2D (độ) từ các mốc đó.\n\n"
-        "- **Góc lệch vai:** góc giữa đường nối hai vai và phương ngang.\n"
-        "- **Lệch thân so với hông:** góc đường (giữa hông → giữa vai) so với phương thẳng đứng, ảnh sau lưng/chính diện.\n"
-        "- **Đầu nhô ra trước (góc tai–vai):** góc giữa phương ngang và đường vai → tai ở ảnh nghiêng. Gần với CVA nhưng **không phải CVA chuẩn**, "
-        "vì không có mốc đốt sống C7 nên dùng mốc vai thay thế.\n"
-        "- **Nghiêng thân:** góc đường hông → vai so với phương thẳng đứng, dương là nghiêng ra trước.\n\n"
-        "- **Gù lưng (ước tính từ ảnh):** người dùng dán 6 nhãn lên mỏm gai (T2, T4, T6, T8, T10, T12; xác định bằng cách sờ và đếm từ C7) rồi chạm chọn từng nhãn trên ảnh nghiêng; app dựng đường cong bậc 3 qua 6 điểm rồi tính góc giữa hai tiếp tuyến ở T2 và T12. Đây là cách làm theo tinh thần phương pháp DIPA, **không phải góc Cobb** và chưa có ngưỡng chuẩn cho học sinh nên app chỉ hiển thị giá trị, không phân mức.\n\n"
-        "**Giảm sai số.** Tự ước lượng máy nghiêng từ các đường thẳng đứng trong nền rồi xoay ảnh bù lại; "
-        "kiểm tra mốc nằm trong khung, đủ rõ; so độ đối xứng của mốc vai với viền cơ thể; lấy trung vị của nhiều ảnh."
-    )
+    page_head("Phương pháp & giới hạn", "App đo gì, đo bằng cách nào và nên hiểu kết quả đến đâu.")
+
+    eyebrow("Cách đo")
+    st.markdown(_one_line("""
+    <div class="ss-box">Mô hình MediaPipe Pose tìm các mốc tai, vai, hông trên ảnh. Mốc do mô hình ước lượng,
+    mọi chỉ số là <b>góc tính trên ảnh 2D</b> (đơn vị độ) từ các mốc đó.</div>
+    <div class="ss-cards">
+      <div class="ss-card"><span class="ss-tag">Ảnh sau lưng / chính diện</span><b>Góc lệch vai</b>Góc giữa đường nối hai vai và phương ngang.</div>
+      <div class="ss-card"><span class="ss-tag">Ảnh sau lưng / chính diện</span><b>Lệch thân so với hông</b>Góc đường từ giữa hông đến giữa vai so với phương thẳng đứng.</div>
+      <div class="ss-card"><span class="ss-tag">Ảnh nghiêng</span><b>Đầu nhô ra trước (góc tai–vai)</b>Góc giữa phương ngang và đường vai → tai. Gần với CVA nhưng <b style="display:inline">không phải CVA chuẩn</b>, vì dùng mốc vai thay cho đốt sống C7.</div>
+      <div class="ss-card"><span class="ss-tag">Ảnh nghiêng</span><b>Nghiêng thân</b>Góc đường hông → vai so với phương thẳng đứng, dương là nghiêng ra trước.</div>
+      <div class="ss-card warn"><span class="ss-tag">Ảnh nghiêng có nhãn</span><b>Gù lưng (ước tính từ ảnh)</b>Người dùng chạm 6 nhãn T2 → T12. App dựng đường cong qua 6 điểm và tính góc giữa hai tiếp tuyến ở T2 và T12, theo tinh thần phương pháp DIPA. <b style="display:inline">Không phải góc Cobb</b>, chưa có ngưỡng cho học sinh nên không phân mức.</div>
+    </div>"""), unsafe_allow_html=True)
+
+    eyebrow("Cách giảm sai số")
+    st.markdown(_one_line("""
+    <div class="ss-cards">
+      <div class="ss-card"><b>Bù máy nghiêng</b>Ước lượng từ các đường thẳng đứng ở nền rồi xoay ảnh bù lại (hoặc nhập tay góc nghiêng).</div>
+      <div class="ss-card"><b>Kiểm tra ảnh</b>Mốc nằm trong khung và đủ rõ, đủ sáng, đủ nét, người chiếm đủ diện tích, đúng hướng chụp.</div>
+      <div class="ss-card"><b>Đối chiếu viền cơ thể</b>So độ đối xứng của mốc vai với viền cơ thể để phát hiện áo rộng hoặc tóc che vai.</div>
+      <div class="ss-card"><b>Nhiều ảnh, lấy trung vị</b>Chụp 3–5 ảnh rời nhau vài giây, app lấy giá trị trung vị. Ảnh không đạt chuẩn bị từ chối và yêu cầu chụp lại.</div>
+    </div>"""), unsafe_allow_html=True)
+
+    eyebrow("Ngưỡng phân loại")
     rows = [("Lệch vai (độ)", "shoulder_tilt"), ("Lệch thân, ảnh sau lưng (độ)", "trunk_shift"),
             ("Nghiêng thân khi đứng (độ)", "trunk_lean_stand"), ("Nghiêng thân khi ngồi (độ)", "trunk_lean_sit"),
             ("Tăng lệch vai khi đeo cặp (độ)", "delta_tilt"), ("Tăng nghiêng thân khi đeo cặp (độ)", "delta_trunk"),
             ("Giảm góc tai–vai khi đeo cặp (độ)", "delta_ear_drop"), ("Cặp / cân nặng (%)", "bag_ratio_pct")]
-    md = "| Chỉ số | Xanh khi nhỏ hơn | Vàng khi ≤ (lớn hơn là đỏ) |\n|---|---|---|\n"
-    md += "\n".join(f"| {n} | {TH[k][0]:g} | {TH[k][1]:g} |" for n, k in rows)
-    md += f"\n| Góc tai–vai (độ; ngưỡng nhóm, không phải CVA chuẩn) | ≥ {EAR_OK:g} xanh | ≥ {EAR_WATCH:g} vàng, nhỏ hơn là đỏ |"
-    st.markdown("**Ngưỡng phân loại: ngưỡng tham khảo của nhóm, chưa có nguồn chuẩn và chưa được kiểm chứng lâm sàng.** Cần đối chiếu với đo thủ công để hiệu chỉnh.")
-    st.markdown(md)
-    st.markdown(
-        "**Giới hạn.**\n"
-        "- Ảnh 2D không thay thế X-quang hay khám lâm sàng, không chẩn đoán vẹo/gù cột sống. Hai chỉ số ở ảnh nghiêng (đầu nhô ra trước, nghiêng thân) **không phải là đo độ gù**. Vẹo cột sống là biến dạng 3D "
-        "có xoay đốt sống; nghiệm pháp cúi người (Adams) với scoliometer mới đánh giá được góc xoay thân.\n"
-        "- Mốc do mô hình ước lượng; áo rộng, tóc che vai, ảnh tối/mờ vẫn có thể làm lệch mốc. App chỉ cảnh báo được một phần.\n"
-        "- Việc bù máy nghiêng chỉ làm được khi nền có đủ đường thẳng đứng; nếu không, hãy đặt máy cố định, ngang bằng.\n"
-        "- Mỗi ảnh chỉ ghi lại một khoảnh khắc, chưa cho biết đó có phải thói quen lâu dài hay không.\n"
-        "- App không ghi ảnh ra đĩa hay cơ sở dữ liệu; ảnh chỉ được xử lý tạm trong bộ nhớ."
-    )
+    g, y, r = ('<span class="ss-dot" style="background:#2E9E5B"></span>', '<span class="ss-dot" style="background:#E3A008"></span>',
+               '<span class="ss-dot" style="background:#D64545"></span>')
+    body = "".join(f"<tr><td>{n}</td><td>{g}nhỏ hơn {TH[k][0]:g}</td><td>{y}đến {TH[k][1]:g}</td><td>{r}trên {TH[k][1]:g}</td></tr>"
+                   for n, k in rows)
+    body += (f"<tr><td>Góc tai–vai (độ)</td><td>{g}từ {EAR_OK:g} trở lên</td><td>{y}từ {EAR_WATCH:g} đến dưới {EAR_OK:g}</td>"
+             f"<td>{r}dưới {EAR_WATCH:g}</td></tr>")
+    st.markdown(_one_line(f"""
+    <div class="ss-box"><b>Đây là ngưỡng tham khảo của nhóm</b>, chưa có nguồn chuẩn và chưa được kiểm chứng lâm sàng.
+    Riêng ngưỡng góc tai–vai không phải ngưỡng CVA chuẩn.</div>
+    <div class="ss-table-wrap"><table class="ss-table">
+      <thead><tr><th>Chỉ số</th><th>Bình thường</th><th>Cần theo dõi</th><th>Nên kiểm tra thêm</th></tr></thead>
+      <tbody>{body}</tbody></table></div>"""), unsafe_allow_html=True)
+
+    eyebrow("Giới hạn cần biết")
+    st.markdown(_one_line("""
+    <ul class="ss-limits">
+      <li>Ảnh 2D <b>không thay thế X-quang hay khám lâm sàng</b>, không chẩn đoán vẹo hay gù cột sống. Hai chỉ số ở ảnh nghiêng (đầu nhô ra trước, nghiêng thân) không phải là đo độ gù.</li>
+      <li>Vẹo cột sống là biến dạng 3D có xoay đốt sống. Nghiệm pháp cúi người (Adams) với scoliometer mới đánh giá được góc xoay thân.</li>
+      <li>Mốc do mô hình ước lượng; áo rộng, tóc che vai, cặp che mốc, ảnh tối hoặc mờ vẫn có thể làm lệch mốc. App chỉ cảnh báo được một phần.</li>
+      <li>Bù máy nghiêng chỉ làm được khi nền có đủ đường thẳng đứng. Nếu không, hãy đặt máy cố định, ngang bằng.</li>
+      <li>Mỗi ảnh chỉ ghi lại một khoảnh khắc, chưa cho biết đó có phải thói quen lâu dài hay không.</li>
+      <li>App không ghi ảnh ra đĩa hay cơ sở dữ liệu; ảnh chỉ được xử lý tạm trong bộ nhớ máy chủ.</li>
+    </ul>"""), unsafe_allow_html=True)
 
 
 def main():
@@ -1304,29 +1374,32 @@ def main():
     with t_guide:
         tab_guide()
     with t_app:
-        tilt_mode = st.radio("Bù máy nghiêng:", ["Tự động (khuyến nghị)", "Nhập tay góc nghiêng máy", "Không bù"],
-                             horizontal=True, key="tilt_mode")
-        if tilt_mode.startswith("Tự"):
-            auto_roll = True
-        elif tilt_mode.startswith("Nhập"):
-            auto_roll = float(st.number_input("Góc nghiêng máy (độ, dương = ảnh xoay thuận chiều kim đồng hồ)",
-                                              -20.0, 20.0, 0.0, 0.5, key="manual_roll"))
-        else:
-            auto_roll = False
-        mode = st.radio("Chọn mục tầm soát tư thế:", ["1. Tư thế đứng (đứng tĩnh, đeo cặp, gù lưng)",
-                                                       "2. Tư thế ngồi học", "3. So sánh trước & sau khi đeo cặp"], key="main_mode")
-        st.markdown("---")
-        if mode.startswith("1"):
-            sub = st.radio("Chức năng:", ["Đứng tĩnh", "Đeo cặp sách", "Gù lưng (ước tính từ ảnh)"],
-                           horizontal=True, key="sub_mode_1")
-            st.markdown("---")
-            if sub.startswith("Đứng"):
+        eyebrow("Bước 1 · Chọn mục")
+        mode = st.radio("Chọn mục tầm soát tư thế:", ["Tư thế đứng", "Tư thế ngồi học", "So sánh trước & sau đeo cặp"],
+                        key="main_mode_v2", horizontal=True, label_visibility="collapsed")
+        sub = None
+        if mode == "Tư thế đứng":
+            sub = st.radio("Chức năng:", ["Đứng tĩnh", "Đeo cặp sách", "Gù lưng"], key="sub_mode_v2", horizontal=True,
+                           label_visibility="collapsed")
+        with st.expander("⚙️ Cài đặt nâng cao: bù máy nghiêng"):
+            tilt_mode = st.radio("Bù máy nghiêng:", ["Tự động (khuyến nghị)", "Nhập tay góc nghiêng máy", "Không bù"],
+                                 key="tilt_mode", horizontal=True)
+            if tilt_mode.startswith("Tự"):
+                auto_roll = True
+            elif tilt_mode.startswith("Nhập"):
+                auto_roll = float(st.number_input("Góc nghiêng máy (độ, dương = ảnh xoay thuận chiều kim đồng hồ)",
+                                                  -20.0, 20.0, 0.0, 0.5, key="manual_roll"))
+            else:
+                auto_roll = False
+        eyebrow("Bước 2 · Tải ảnh và xem kết quả")
+        if mode == "Tư thế đứng":
+            if sub == "Đứng tĩnh":
                 mode_standing(auto_roll)
-            elif sub.startswith("Đeo"):
+            elif sub == "Đeo cặp sách":
                 mode_bag(auto_roll)
             else:
                 mode_kyphosis()
-        elif mode.startswith("2"):
+        elif mode == "Tư thế ngồi học":
             mode_sitting(auto_roll)
         else:
             mode_compare(auto_roll)
