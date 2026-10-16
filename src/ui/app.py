@@ -17,7 +17,8 @@ def main():
     logo = load_logo()
     st.set_page_config(
         page_title="S-Spine | AI đánh giá và phân tích tư thế học đường",
-        page_icon=logo if logo is not None else "🛡️",
+        from PIL import Image
+page_icon=Image.open("image-0 (2).png"),
         layout="wide",
     )
     st.markdown(CSS_HOME, unsafe_allow_html=True)
