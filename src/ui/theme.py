@@ -233,8 +233,8 @@ a:hover { color:var(--navy2); }
 
 def load_logo():
     for name in [
-        "gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.png",
-        "gen-n-z8308486911094_3cf6e9f66d814eabd93c0c5ae610e055-modified.jpg",
+        "image-0 (2).png",
+        "image-0 (2).jpg",
     ]:
         try:
             return Image.open(name)
