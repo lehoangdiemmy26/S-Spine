@@ -13,14 +13,32 @@ from src.ui.theme import CSS_HOME, eyebrow, header_html, load_logo
 from src.vision.pose import get_pose, last_pose_error
 
 
+import base64
+import io
+from pathlib import Path
+
+from PIL import Image
+
+
+def _favicon_uri(path="image-0 (2).png"):
+    try:
+        im = Image.open(Path(__file__).resolve().parents[2] / path).convert("RGBA")
+        im.thumbnail((128, 128))
+        buf = io.BytesIO()
+        im.save(buf, format="PNG")
+        return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return None
+
+
 def main():
     logo = load_logo()
     st.set_page_config(
         page_title="S-Spine | AI đánh giá và phân tích tư thế học đường",
-        from PIL import Image
-page_icon=Image.open("image-0 (2).png"),
+        page_icon=_favicon_uri() or "🛡️",
         layout="wide",
     )
+    ...
     st.markdown(CSS_HOME, unsafe_allow_html=True)
 
     if get_pose() is None:
